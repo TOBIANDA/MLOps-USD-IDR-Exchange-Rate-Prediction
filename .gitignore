@@ -62,6 +62,12 @@ htmlcov/
 Thumbs.db
 ehthumbs.db
 
-# Sub-projects
+# Sub-projects & Local assignment drafts
 mlbb_counter_web/
 scratch/
+LK01*
+LK02*
+build_full_document.py
+export_pdf.py
+test_bi_api.py
+data/models/
