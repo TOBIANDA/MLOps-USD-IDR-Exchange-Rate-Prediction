@@ -1,0 +1,40 @@
+project:
+  name: "MLOps-USD-IDR-Exchange-Rate-Prediction"
+  description: "Bank Indonesia USD/IDR Exchange Rate Continual Forecasting MLOps Platform"
+  version: "1.0.0"
+  author: "Tobias Andra Valentino"
+  institution: "Universitas Brawijaya"
+  course: "MLOps TIF-B 2026"
+
+data:
+  bi_api_url: "https://www.bi.go.id/biwebservice/wskursbi.asmx/getSubKursLokal3"
+  currency: "USD"
+  raw_data_path: "data/raw/usd_idr_raw.csv"
+  processed_data_path: "data/processed/usd_idr_featured.csv"
+  database_path: "data/exchange_rates.db"
+
+features:
+  lags: [1, 2, 3, 5, 7, 14]
+  rolling_windows: [7, 14]
+  target_column: "target_jual"
+  date_column: "tgl"
+
+model:
+  champion_type: "RidgeRegression"
+  ridge_alpha: 1.0
+  random_state: 42
+  time_series_test_size: 0.20
+  model_dir: "models"
+  champion_model_path: "models/model_champion.pkl"
+  metadata_path: "models/model_metadata.json"
+
+benchmarks:
+  - name: "RandomWalk"
+    description: "y_pred(t+1) = y(t) [Efficient Market Hypothesis Benchmark]"
+  - name: "RollingMean7d"
+    description: "y_pred(t+1) = mean(y(t-6)...y(t))"
+
+api:
+  host: "0.0.0.0"
+  port: 8000
+  reload: false

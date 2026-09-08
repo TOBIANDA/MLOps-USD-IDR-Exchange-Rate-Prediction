@@ -1,0 +1,45 @@
+{
+  "name": "MLOps USD/IDR FX Forecasting Environment",
+  "image": "mcr.microsoft.com/devcontainers/python:3.11",
+  "features": {
+    "ghcr.io/devcontainers/features/git:1": {}
+  },
+  "customizations": {
+    "vscode": {
+      "settings": {
+        "python.defaultInterpreterPath": "/usr/local/bin/python",
+        "python.languageServer": "Pylance",
+        "python.analysis.typeCheckingMode": "basic",
+        "python.analysis.autoImportCompletions": true,
+        "editor.formatOnSave": true,
+        "[python]": {
+          "editor.defaultFormatter": "charliermarsh.ruff"
+        }
+      },
+      "extensions": [
+        "ms-python.python",
+        "ms-python.vscode-pylance",
+        "ms-toolsai.jupyter",
+        "ms-toolsai.vscode-jupyter-cell-tags",
+        "ms-toolsai.jupyter-keymap",
+        "ms-toolsai.jupyter-renderers",
+        "charliermarsh.ruff",
+        "njpwerner.autodocstring",
+        "redhat.vscode-yaml"
+      ]
+    }
+  },
+  "forwardPorts": [8000, 8888],
+  "portsAttributes": {
+    "8000": {
+      "label": "FastAPI REST API",
+      "onAutoForward": "notify"
+    },
+    "8888": {
+      "label": "Jupyter Notebook Lab",
+      "onAutoForward": "silent"
+    }
+  },
+  "postCreateCommand": "pip install --upgrade pip && pip install -r requirements.txt",
+  "remoteUser": "vscode"
+}
