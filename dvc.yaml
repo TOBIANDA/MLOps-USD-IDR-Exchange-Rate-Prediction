@@ -1,0 +1,25 @@
+# DVC Pipeline Specification for USD/IDR Data Architecture
+# Stages: ingest_extract -> clean_validate_featurize
+
+stages:
+  ingest_extract:
+    cmd: python -m src.ingestion.fetcher
+    deps:
+      - src/ingestion/fetcher.py
+    outs:
+      - data/exchange_rates.db:
+          cache: true
+
+  clean_validate_featurize:
+    cmd: python -m src.ingestion.etl_pipeline
+    deps:
+      - src/ingestion/etl_pipeline.py
+      - src/features/pipeline.py
+      - data/exchange_rates.db
+    outs:
+      - data/raw/usd_idr_raw.csv:
+          cache: true
+      - data/processed/usd_idr_featured.csv:
+          cache: true
+      - data/data_manifest.json:
+          cache: false

@@ -67,6 +67,10 @@ mlbb_counter_web/
 scratch/
 LK01*
 LK02*
+LK03*
+analis/
+jaringan nirkabel/
+*.pptx*
 build_full_document.py
 export_pdf.py
 test_bi_api.py

@@ -1,28 +1,28 @@
 {
   "evaluation_period_days": 10,
-  "test_start_date": "2026-08-24",
-  "test_end_date": "2026-09-07",
+  "test_start_date": "2026-09-07",
+  "test_end_date": "2026-09-18",
   "benchmarks": {
     "Naive_Random_Walk": {
-      "MAE": 37.79,
-      "RMSE": 44.3,
-      "MAPE_pct": 0.212,
+      "MAE": 36.08,
+      "RMSE": 41.92,
+      "MAPE_pct": 0.204,
       "Directional_Accuracy_pct": 0.0
     },
     "Moving_Average_7D": {
-      "MAE": 65.0,
-      "RMSE": 75.87,
-      "MAPE_pct": 0.365,
-      "Directional_Accuracy_pct": 70.0
+      "MAE": 98.69,
+      "RMSE": 108.93,
+      "MAPE_pct": 0.556,
+      "Directional_Accuracy_pct": 40.0
     }
   },
   "candidate_model": {
     "model_type": "RidgeRegression",
     "metrics": {
-      "MAE": 44.47,
-      "RMSE": 61.08,
-      "MAPE_pct": 0.25,
-      "Directional_Accuracy_pct": 60.0
+      "MAE": 47.66,
+      "RMSE": 52.94,
+      "MAPE_pct": 0.269,
+      "Directional_Accuracy_pct": 40.0
     },
     "beats_random_walk_mae": false
   }

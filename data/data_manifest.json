@@ -1,0 +1,23 @@
+{
+  "execution_timestamp": "2026-09-21T17:33:27.916088",
+  "source": "Bank Indonesia Web Service (getSubKursLokal3)",
+  "currency_pair": "USD/IDR",
+  "raw_dataset": {
+    "file_path": "data\\raw\\usd_idr_raw.csv",
+    "total_records": 119,
+    "date_range": {
+      "start": "2026-03-25",
+      "end": "2026-09-21"
+    },
+    "sha256": "e1736145d1923a0dbc1b1587ec9a092295be72deab6accbf5e9b71a31f7e5a73",
+    "file_size_bytes": 6074
+  },
+  "processed_dataset": {
+    "file_path": "data\\processed\\usd_idr_featured.csv",
+    "total_records": 119,
+    "total_features": 26,
+    "sha256": "cd3974145aebb35abb2325a96b5a6babf8d3ce5dcf6861eea33147142768f764",
+    "file_size_bytes": 29756
+  },
+  "validation_status": "PASSED"
+}

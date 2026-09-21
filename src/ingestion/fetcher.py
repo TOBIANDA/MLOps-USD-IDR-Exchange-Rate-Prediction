@@ -142,6 +142,21 @@ def load_from_db(db_path: Path = DEFAULT_DB_PATH) -> pd.DataFrame:
     return df
 
 
+def sync_rates(days: int = 180, db_path: Path = DEFAULT_DB_PATH) -> Tuple[pd.DataFrame, int]:
+    """
+    Fetch rates from BI for the last `days` days and sync into SQLite DB.
+    Returns (loaded_df, inserted_count).
+    """
+    init_db(db_path)
+    end_date = datetime.date.today()
+    start_date = end_date - datetime.timedelta(days=days)
+    fetched_df = fetch_bi_rates(start_date=start_date, end_date=end_date)
+    inserted = save_to_db(fetched_df, db_path=db_path)
+    all_df = load_from_db(db_path=db_path)
+    return all_df, inserted
+
+
+
 if __name__ == "__main__":
     init_db()
     # Fetch past 180 days by default
