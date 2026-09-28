@@ -1,0 +1,28 @@
+{
+  "execution_timestamp": "2026-09-28T16:22:18.252713",
+  "output_file": "data\\processed\\usd_idr_cleaned.csv",
+  "statistics": {
+    "initial_rows": 21,
+    "final_clean_rows": 21,
+    "dropped_null_rows": 0,
+    "dropped_duplicate_rows": 0,
+    "dropped_invalid_financial_rows": 0,
+    "null_analysis": {
+      "tgl": 0,
+      "beli": 0,
+      "jual": 0
+    },
+    "date_range": {
+      "start": "2026-08-31",
+      "end": "2026-09-28"
+    },
+    "summary_metrics": {
+      "min_tengah": 17536.0,
+      "max_tengah": 17917.0,
+      "mean_tengah": 17718.428571428572,
+      "mean_spread": 177.1809523809524,
+      "daily_return_volatility_pct": 0.3002070038016751
+    },
+    "validation_status": "PASSED"
+  }
+}

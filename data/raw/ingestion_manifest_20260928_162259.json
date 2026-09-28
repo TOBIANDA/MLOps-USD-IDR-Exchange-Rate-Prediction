@@ -1,0 +1,15 @@
+{
+  "ingestion_timestamp": "2026-09-28T16:22:59.663181",
+  "source_endpoint": "https://www.bi.go.id/biwebservice/wskursbi.asmx/getSubKursLokal3",
+  "currency": "USD",
+  "total_records": 11,
+  "date_range": {
+    "start": "2026-09-14",
+    "end": "2026-09-28"
+  },
+  "saved_files": [
+    "data\\raw\\usd_idr_raw_20260928_162259.csv",
+    "data\\raw\\usd_idr_raw_latest.csv",
+    "data\\raw\\usd_idr_raw.csv"
+  ]
+}
