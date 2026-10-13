@@ -346,6 +346,16 @@ def parse_args():
         action="store_true",
         help="Skip syncing ingested records to local SQLite database",
     )
+    parser.add_argument(
+        "--plot",
+        action="store_true",
+        help="Generate visual analysis dashboard after ingestion",
+    )
+    parser.add_argument(
+        "--table",
+        action="store_true",
+        help="Display formatted tabular visualization of ingested rates in terminal and export HTML/Markdown table",
+    )
     return parser.parse_args()
 
 
@@ -361,6 +371,42 @@ if __name__ == "__main__":
         sync_db=not args.no_db_sync,
         use_timestamp=not args.no_timestamp,
     )
+
+    plot_path = None
+    if args.plot and not df.empty:
+        try:
+            if str(PROJECT_ROOT) not in sys.path:
+                sys.path.insert(0, str(PROJECT_ROOT))
+            from src.visualize import generate_exchange_rate_dashboard
+            plot_file = PROJECT_ROOT / "docs" / "visualisasi_kurs_usd_idr.png"
+            plot_path = generate_exchange_rate_dashboard(df, plot_file)
+            paths["visualization"] = plot_path
+        except Exception as err:
+            logger.warning(f"Could not generate plot: {err}")
+
+    if args.table and not df.empty:
+        try:
+            if str(PROJECT_ROOT) not in sys.path:
+                sys.path.insert(0, str(PROJECT_ROOT))
+            from src.visualize import (
+                format_exchange_rate_table,
+                format_summary_metrics_table,
+                export_markdown_table,
+                export_html_table,
+            )
+            print("\n" + "=" * 80)
+            print(" [VISUALISASI TABEL KURS USD/IDR BANK INDONESIA]")
+            print("=" * 80)
+            print(format_exchange_rate_table(df, limit=args.days))
+            print("\n>> RINGKASAN METRIK OBSERVASI:")
+            print(format_summary_metrics_table(df))
+
+            md_path = export_markdown_table(df, PROJECT_ROOT / "docs" / "tabel_kurs_usd_idr.md", limit=args.days)
+            html_path = export_html_table(df, PROJECT_ROOT / "docs" / "tabel_kurs_usd_idr.html", limit=args.days)
+            paths["table_markdown"] = md_path
+            paths["table_html"] = html_path
+        except Exception as err:
+            logger.warning(f"Could not render table: {err}")
 
     print("\n" + "=" * 60)
     print(" [INGESTION SUCCESS] Bank Indonesia Data Ingestion Summary")
