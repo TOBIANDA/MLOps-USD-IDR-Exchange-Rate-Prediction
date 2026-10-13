@@ -196,7 +196,101 @@ python src/data/preprocess.py
 
 ---
 
-## 💻 6. Panduan Menjalankan Proyek Secara Lengkap
+## 🗄️ 6. Data Version Control (DVC) & Manajemen Silsilah Data (Continual Learning)
+
+Repositori ini telah terintegrasi secara penuh dengan **[Data Version Control (DVC)](https://dvc.org/)** untuk mengatasi keterbatasan Git dalam menangani berkas data tabular/biner berukuran besar (*mitigasi Git repository bloat*).
+
+### A. Prinsip Pemisahan Metadata vs. Payload Fisik
+1. **Berkas Penunjuk Ringan (`.dvc`)**:
+   Git hanya melacak berkas teks metadata mikro (`data/raw/usd_idr_raw.csv.dvc`) berukuran ~100 byte yang memuat nilai *hash cryptographic digest* (MD5) dan ukuran berkas.
+2. **Isolasi Berkas Fisik (`.gitignore`)**:
+   Berkas fisik `data/raw/usd_idr_raw.csv` secara otomatis diabaikan oleh Git melalui `data/raw/.gitignore` sehingga riwayat commit Git tetap ramping dan cepat.
+3. **Penyimpanan Objek Eksternal (*Content-Addressable Storage / CAS*)**:
+   Muatan data fisik disimpan ke dalam remote storage terisolasi (`C:/Users/kuahs/dvc_remote_storage/mlops_usd_idr`) berbasis struktur hash `md5/{prefix}/{hash}` (simulasi *object storage* seperti AWS S3, GCP Cloud Storage, atau MinIO).
+
+---
+
+### B. Alur Penambahan Versi Data (Continual Learning Workflow)
+
+Setiap kali data transaksi valas baru ditarik dari Bank Indonesia, ikuti alur berikut untuk merekam versi data baru secara deterministik:
+
+```mermaid
+flowchart LR
+    A[Bank Indonesia API] -->|ingest_data.py| B[usd_idr_raw.csv]
+    B -->|dvc status| C{Data Berubah?}
+    C -->|Ya| D[dvc add usd_idr_raw.csv]
+    D -->|Update Hash| E[.dvc Pointer File]
+    D -->|Cache & Deduplikasi| F[DVC Remote Storage]
+    E -->|git commit & tag| G[Git Repository]
+```
+
+1. **Jalankan Skrip Ingesti untuk Menarik Data Tambahan**:
+   ```bash
+   python src/ingest_data.py --days 30 --format csv --table
+   ```
+2. **Periksa Deteksi Modifikasi Data**:
+   ```bash
+   dvc status
+   # Output: data\raw\usd_idr_raw.csv.dvc: changed outs (modified: data\raw\usd_idr_raw.csv)
+   ```
+3. **Catat Versi Data Baru ke DVC**:
+   ```bash
+   dvc add data/raw/usd_idr_raw.csv
+   ```
+4. **Unggah Salinan Data ke Remote Storage**:
+   ```bash
+   dvc push
+   ```
+5. **Commit Berkas Pointer ke Git & Buat Release Tag**:
+   ```bash
+   git add data/raw/usd_idr_raw.csv.dvc
+   git commit -m "feat(data): update USD/IDR raw dataset to v2 (continual learning batch)"
+   git tag -a v2.0-dataset -m "Updated USD/IDR dataset v2 (22 trading days)"
+   ```
+
+---
+
+### C. Ringkasan Silsilah Dataset (Data Lineage Table)
+
+| Versi Dataset | Git Tag | Jumlah Baris | Rentang Tanggal Observasi | Ukuran Berkas | Hash MD5 | Keterangan Status |
+|:---:|:---:|:---:|:---:|:---:|:---:|:---|
+| **v1.0** | `v1.0-dataset` | 10 baris | 15 Sep – 28 Sep 2026 | 549 bytes | `e1330ecab9886b29f29f090eff2716c6` | *Baseline Ingestion* (LK-04) |
+| **v2.0** | `v2.0-dataset` | 22 baris | 14 Sep – 13 Okt 2026 | 1.156 bytes | `79fc5c4addfe529143a6fffbce5322ac` | *Continual Learning Batch* (+12 baris) |
+
+---
+
+### D. Audit Perbedaan & Demonstrasi Time-Travel Dataset
+
+DVC memungkinkan audit silsilah data (*data lineage audit*) dan kemampuan berpindah waktu antar versi data (*dataset time-travel*):
+
+* **Melihat perbedaan hash metadata antara dua versi**:
+  ```bash
+  dvc diff v1.0-dataset v2.0-dataset --show-hash
+  # Output: Modified: e1330eca..79fc5c4a  data\raw\usd_idr_raw.csv
+  ```
+
+* **Melihat perbedaan ringkas format Markdown**:
+  ```bash
+  dvc diff v1.0-dataset v2.0-dataset --md
+  ```
+
+* **Time-Travel: Mengembalikan data ke Versi v1.0**:
+  ```bash
+  git checkout v1.0-dataset
+  dvc checkout
+  # File data/raw/usd_idr_raw.csv otomatis kembali ke 10 baris (549 bytes)
+  ```
+
+* **Kembali ke Versi Mutakhir v2.0**:
+  ```bash
+  git checkout feat/dvc-data-versioning
+  dvc checkout
+  # File data/raw/usd_idr_raw.csv otomatis kembali ke 22 baris (1.156 bytes)
+  ```
+
+---
+
+## 💻 7. Panduan Menjalankan Proyek Secara Lengkap
 
 ### 1. Kloning Repositori
 ```bash
@@ -216,7 +310,13 @@ pip install --upgrade pip
 pip install -r requirements.txt
 ```
 
-### 3. Eksekusi Pipeline Pengumpulan & Prapemrosesan Data
+### 3. Tarik Data dari DVC Remote Storage
+```bash
+# Sinkronkan data aktual dari remote storage tanpa mengunduh dari Git
+dvc pull
+```
+
+### 4. Eksekusi Pipeline Pengumpulan & Prapemrosesan Data
 ```bash
 # Tarik data dinamis terbaru dari Bank Indonesia
 python src/ingest_data.py --days 30 --format all
@@ -225,17 +325,17 @@ python src/ingest_data.py --days 30 --format all
 python src/preprocess.py
 ```
 
-### 4. Jalankan Pengujian Otomatis (Unit Testing 100% Pass)
+### 5. Jalankan Pengujian Otomatis (Unit Testing 100% Pass)
 ```bash
 python -m pytest tests/ -v
 ```
 
-### 5. Pelatihan Model & Evaluasi Benchmark
+### 6. Pelatihan Model & Evaluasi Benchmark
 ```bash
 python -m src.models.trainer
 ```
 
-### 6. Jalankan FastAPI Serving Server
+### 7. Jalankan FastAPI Serving Server
 ```bash
 python -m uvicorn src.api.app:app --host 0.0.0.0 --port 8000 --reload
 ```
@@ -243,7 +343,7 @@ Akses dokumentasi interaktif Swagger UI di browser: `http://127.0.0.1:8000/docs`
 
 ---
 
-## 📊 7. Metrik Evaluasi & Benchmark Random Walk
+## 📊 8. Metrik Evaluasi & Benchmark Random Walk
 
 Sesuai *Efficient Market Hypothesis* (EMH), model Machine Learning wajib dievaluasi terhadap standar industri finansial:
 - **Baseline 1 (Naive Random Walk)**: $y_{t+1} = y_t$
@@ -252,9 +352,10 @@ Sesuai *Efficient Market Hypothesis* (EMH), model Machine Learning wajib dievalu
 
 ---
 
-## ✉️ 8. Undangan Kolaborator Dosen
+## ✉️ 9. Undangan Kolaborator Dosen
 Untuk transparansi monitoring berkala:
 1. Masuk ke tab **Settings** repositori GitHub.
 2. Pilih menu **Collaborators** > **Add people**.
 3. Masukkan email dosen pengampu: `rizalespe@gmail.com` dan kirim undangan kolaborasi.
+
 
