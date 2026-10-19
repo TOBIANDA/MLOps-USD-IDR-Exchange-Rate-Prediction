@@ -70,6 +70,7 @@ LK02*
 LK03*
 LK04*
 LK05*
+LK06*
 analis/
 jaringan nirkabel/
 *.pptx*
@@ -77,3 +78,6 @@ build_full_document.py
 export_pdf.py
 test_bi_api.py
 data/models/
+mlflow.db*
+mlruns/
+materi/
