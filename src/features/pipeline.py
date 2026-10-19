@@ -27,6 +27,8 @@ def create_features(df: pd.DataFrame) -> pd.DataFrame:
         data[f"beli_lag_{lag}"] = data["beli"].shift(lag)
 
     # Rolling statistics (computed strictly on past values)
+    data["jual_ma_3"] = data["jual"].shift(1).rolling(window=3).mean()
+    data["jual_ma_5"] = data["jual"].shift(1).rolling(window=5).mean()
     data["jual_ma_7"] = data["jual"].shift(1).rolling(window=7).mean()
     data["jual_ma_14"] = data["jual"].shift(1).rolling(window=14).mean()
     data["jual_std_7"] = data["jual"].shift(1).rolling(window=7).std()

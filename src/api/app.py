@@ -79,9 +79,14 @@ def predict_h1() -> Dict[str, Any]:
 
     featured = create_features(df)
     latest_row = featured.iloc[[-1]]
-    latest_features = latest_row[FEATURE_COLS]
 
     model = joblib.load(MODEL_PATH)
+    model_features = getattr(model, "feature_names_in_", None)
+    if model_features is not None and all(col in latest_row.columns for col in model_features):
+        latest_features = latest_row[list(model_features)]
+    else:
+        latest_features = latest_row[FEATURE_COLS]
+
     pred_jual = float(model.predict(latest_features)[0])
 
     # Compute spread based on recent 7-day average spread
