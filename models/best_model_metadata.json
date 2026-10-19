@@ -1,0 +1,26 @@
+{
+  "run_id": "851b703b994541eca6737a96b5aacd7d",
+  "run_name": "Run_4_GradientBoosting_Champion",
+  "model_type": "GradientBoostingRegressor",
+  "metrics": {
+    "MAE": 25.63,
+    "RMSE": 27.34,
+    "MAPE_pct": 0.143,
+    "R2_Score": -5.3447,
+    "Directional_Accuracy_pct": 40.0,
+    "Train_RMSE": 1.53
+  },
+  "params": {
+    "model_type": "GradientBoostingRegressor",
+    "n_estimators": 100,
+    "learning_rate": 0.05,
+    "max_depth": 3,
+    "subsample": 0.8,
+    "features_count": 9
+  },
+  "registered_model": {
+    "name": "USD_IDR_Exchange_Rate_Regressor",
+    "version": 1,
+    "model_uri": "runs:/851b703b994541eca6737a96b5aacd7d/model"
+  }
+}

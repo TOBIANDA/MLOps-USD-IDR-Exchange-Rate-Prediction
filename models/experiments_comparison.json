@@ -1,0 +1,87 @@
+[
+  {
+    "run_id": "fd2b611ce2ea46a8b34280d5feaaea63",
+    "run_name": "Run_1_Ridge_L2_Regularization",
+    "model_type": "RidgeRegression",
+    "metrics": {
+      "MAE": 40.24,
+      "RMSE": 43.33,
+      "MAPE_pct": 0.224,
+      "R2_Score": -14.9412,
+      "Directional_Accuracy_pct": 80.0,
+      "Train_RMSE": 34.04
+    },
+    "params": {
+      "model_type": "RidgeRegression",
+      "alpha": 1.0,
+      "solver": "auto",
+      "features_count": 9
+    }
+  },
+  {
+    "run_id": "88691c7fb0864e2cad194cd607970cbb",
+    "run_name": "Run_2_RandomForest_Deep_Trees",
+    "model_type": "RandomForestRegressor",
+    "metrics": {
+      "MAE": 28.85,
+      "RMSE": 29.65,
+      "MAPE_pct": 0.16,
+      "R2_Score": -6.4631,
+      "Directional_Accuracy_pct": 40.0,
+      "Train_RMSE": 16.99
+    },
+    "params": {
+      "model_type": "RandomForestRegressor",
+      "n_estimators": 100,
+      "max_depth": 6,
+      "min_samples_split": 2,
+      "features_count": 9
+    }
+  },
+  {
+    "run_id": "3cd48a479339417a989d64981fd2f260",
+    "run_name": "Run_3_RandomForest_Tuned_Regularized",
+    "model_type": "RandomForestRegressor",
+    "metrics": {
+      "MAE": 29.23,
+      "RMSE": 30.24,
+      "MAPE_pct": 0.163,
+      "R2_Score": -6.7606,
+      "Directional_Accuracy_pct": 40.0,
+      "Train_RMSE": 22.06
+    },
+    "params": {
+      "model_type": "RandomForestRegressor",
+      "n_estimators": 150,
+      "max_depth": 3,
+      "min_samples_split": 4,
+      "features_count": 9
+    }
+  },
+  {
+    "run_id": "851b703b994541eca6737a96b5aacd7d",
+    "run_name": "Run_4_GradientBoosting_Champion",
+    "model_type": "GradientBoostingRegressor",
+    "metrics": {
+      "MAE": 25.63,
+      "RMSE": 27.34,
+      "MAPE_pct": 0.143,
+      "R2_Score": -5.3447,
+      "Directional_Accuracy_pct": 40.0,
+      "Train_RMSE": 1.53
+    },
+    "params": {
+      "model_type": "GradientBoostingRegressor",
+      "n_estimators": 100,
+      "learning_rate": 0.05,
+      "max_depth": 3,
+      "subsample": 0.8,
+      "features_count": 9
+    },
+    "registered_model": {
+      "name": "USD_IDR_Exchange_Rate_Regressor",
+      "version": 1,
+      "model_uri": "runs:/851b703b994541eca6737a96b5aacd7d/model"
+    }
+  }
+]
