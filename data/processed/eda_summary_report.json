@@ -1,0 +1,51 @@
+{
+  "dataset_total_rows": 500,
+  "date_start": "2024-11-13",
+  "date_end": "2026-10-13",
+  "missing_values_total": 0,
+  "descriptive_stats": {
+    "jual_min": 17649.81,
+    "jual_max": 19173.39,
+    "jual_mean": 18413.06,
+    "jual_std": 388.76,
+    "beli_mean": 18229.85,
+    "tengah_mean": 18321.45,
+    "spread_mean": 183.21,
+    "daily_diff_std_idr": 25.98,
+    "daily_return_std_pct": 0.141,
+    "daily_return_skew": 0.0078,
+    "daily_return_kurtosis": -0.4965
+  },
+  "level_autocorrelation": {
+    "lag_1": 0.99777,
+    "lag_2": 0.99236,
+    "lag_3": 0.98448,
+    "lag_5": 0.96186,
+    "lag_7": 0.93046,
+    "lag_10": 0.86808,
+    "lag_14": 0.75948
+  },
+  "diff_autocorrelation": {
+    "lag_1": 0.7108,
+    "lag_2": 0.5487,
+    "lag_3": 0.5126,
+    "lag_5": 0.5068,
+    "lag_7": 0.4591,
+    "lag_10": 0.4358,
+    "lag_14": 0.3213
+  },
+  "test_window_benchmarks_30d": {
+    "test_days": 30,
+    "Naive_Random_Walk": {
+      "RMSE": 27.1802,
+      "MAE": 22.446,
+      "MAPE_pct": 0.1228
+    },
+    "Moving_Average_7D": {
+      "RMSE": 129.0685,
+      "MAE": 120.3463,
+      "MAPE_pct": 0.6581
+    }
+  },
+  "dashboard_artifact": "docs\\eda_comprehensive_dashboard.png"
+}

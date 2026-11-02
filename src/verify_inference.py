@@ -40,16 +40,16 @@ def test_production_inference() -> Dict[str, Any]:
     df["tgl"] = pd.to_datetime(df["tgl"])
     df = df.sort_values("tgl").reset_index(drop=True)
 
-    # Construct features exactly as in training
-    for lag in [1, 2, 3, 5]:
-        df[f"jual_lag_{lag}"] = df["jual"].shift(lag)
-        if "beli" in df.columns:
-            df[f"beli_lag_{lag}"] = df["beli"].shift(lag)
-    df["jual_ma_3"] = df["jual"].shift(1).rolling(window=3).mean()
-    df["jual_ma_5"] = df["jual"].shift(1).rolling(window=5).mean()
-    df["jual_diff_1"] = df["jual"].shift(1) - df["jual"].shift(2)
+    # Construct features aligned to H+1 target (known at end of day t)
+    df["jual_lag_1"] = df["jual"]
+    df["jual_lag_2"] = df["jual"].shift(1)
+    df["jual_lag_3"] = df["jual"].shift(2)
+    df["jual_lag_5"] = df["jual"].shift(4)
+    df["jual_ma_3"] = df["jual"].rolling(window=3).mean()
+    df["jual_ma_5"] = df["jual"].rolling(window=5).mean()
+    df["jual_diff_1"] = df["jual"] - df["jual"].shift(1)
     if "spread" in df.columns:
-        df["spread_lag_1"] = df["spread"].shift(1)
+        df["spread_lag_1"] = df["spread"]
     df["day_of_week"] = df["tgl"].dt.dayofweek
 
     feature_cols = [
@@ -111,8 +111,8 @@ def test_production_inference() -> Dict[str, Any]:
     pred_beli = round(pred_jual - recent_spread, 2)
     pred_tengah = round((pred_jual + pred_beli) / 2.0, 2)
 
-    # 95% Confidence Interval based on test MAE (13.80 IDR) -> ~ 1.96 * 13.80 * 0.8
-    ci_half = round(1.96 * (13.80 * 0.8), 2)
+    # 95% Confidence Interval based on 30-day test RMSE (19.46 IDR)
+    ci_half = round(1.96 * 19.46, 2)
     ci_lower = round(pred_jual - ci_half, 2)
     ci_upper = round(pred_jual + ci_half, 2)
 

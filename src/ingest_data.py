@@ -84,7 +84,7 @@ class IngestionWorker:
 
     def fetch_dynamic_rates(
         self,
-        days: int = 30,
+        days: int = 500,
         currency: str = "USD",
         start_date: Optional[datetime.date] = None,
         end_date: Optional[datetime.date] = None,
@@ -180,7 +180,7 @@ class IngestionWorker:
         logger.info("Synchronized to SQLite: %d new rows inserted into %s.", inserted, self.db_path.name)
         return inserted
 
-    def load_from_db_cache(self, days: int = 30) -> pd.DataFrame:
+    def load_from_db_cache(self, days: int = 500) -> pd.DataFrame:
         """Fallback query from SQLite cache."""
         self.init_database()
         conn = sqlite3.connect(self.db_path)
@@ -271,7 +271,7 @@ class IngestionWorker:
 
     def run(
         self,
-        days: int = 30,
+        days: int = 500,
         currency: str = "USD",
         export_formats: Optional[List[str]] = None,
         sync_db: bool = True,
@@ -287,6 +287,7 @@ class IngestionWorker:
 
         if sync_db:
             self.sync_to_sqlite(raw_df)
+            raw_df = self.load_from_db_cache(days=days)
 
         saved_files = self.save_raw_dataset(
             df=raw_df,
@@ -299,7 +300,7 @@ class IngestionWorker:
 
 
 def ingest_usd_idr_rates(
-    days: int = 30,
+    days: int = 500,
     output_dir: Union[str, Path] = DEFAULT_RAW_DIR,
     export_formats: Optional[List[str]] = None,
 ) -> Tuple[pd.DataFrame, Dict[str, Path]]:
@@ -315,8 +316,8 @@ def parse_args():
     parser.add_argument(
         "--days",
         type=int,
-        default=30,
-        help="Number of historical business days to fetch (default: 30)",
+        default=500,
+        help="Number of historical business days to fetch (default: 500)",
     )
     parser.add_argument(
         "--currency",

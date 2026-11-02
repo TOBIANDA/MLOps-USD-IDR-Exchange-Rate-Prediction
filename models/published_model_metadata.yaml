@@ -1,7 +1,7 @@
 # ==============================================================================
 # MLflow Model Registry & DVC Lineage Metadata
 # Lembar Kerja 07 (LK-07): Model Registry, Versioning, dan Kesiapan Inferensi
-# Program Studi: Magister Ilmu Komputer FILKOM Universitas Brawijaya
+# Program Studi: Teknik Informatika FILKOM Universitas Brawijaya
 # ==============================================================================
 
 model_registry:
@@ -13,41 +13,47 @@ model_registry:
     - champion
   status: READY
   description: >
-    Model regresi time-series peramalan kurs harian USD/IDR (Bank Indonesia)
-    berbasis Gradient Boosting Regressor yang telah dioptimasi hyperparameternya
-    dan divalidasi siap inferensi produksi.
+    Model regresi time-series peramalan kurs harian USD/IDR Bank Indonesia
+    berbasis Gradient Boosting Regressor yang dilatih pada 465 hari bursa
+    dengan optimasi 5-Fold TimeSeriesSplit Cross-Validation dan diuji pada
+    30 hari bursa out-of-sample.
 
 lifecycle_history:
   v1:
     version: 1
     stage: Archived
-    run_id: 851b703b994541eca6737a96b5aacd7d
+    run_id: b83ed05fa3c44818bcba410579db198b
     run_name: Run_4_GradientBoosting_Champion
     metrics:
-      rmse_idr: 27.34
-      mae_idr: 25.63
-      mape_pct: 0.143
-      directional_accuracy_pct: 40.0
+      rmse_idr: 21.30
+      mae_idr: 17.82
+      mape_pct: 0.097
+      directional_accuracy_pct: 69.0
+      cv_5fold_rmse_idr: 70.77
     status: Archived_Superseded
-    reason: Digantikan oleh v2 yang memiliki penurunan galat kuadrat sebesar 45.5%.
+    reason: Digantikan oleh Version 2 hasil tuning 5-Fold TimeSeriesSplit CV yang menurunkan RMSE ke 19.46 IDR dan meningkatkan Directional Accuracy ke 72.4%.
   v2:
     version: 2
     stage: Production
-    run_id: ef6240024fc14f6886fffdea856c5dac
+    run_id: d1936a326ef64647ba1558204c4acb44
     run_name: Run_5_GradientBoosting_Tuned_v2
     metrics:
-      rmse_idr: 14.90
-      mae_idr: 13.80
-      mape_pct: 0.077
-      r2_score: -0.8855
-      directional_accuracy_pct: 60.0
-      train_rmse_idr: 19.49
+      rmse_idr: 19.46
+      mae_idr: 16.73
+      mape_pct: 0.091
+      r2_score: 0.9914
+      directional_accuracy_pct: 72.4
+      train_rmse_idr: 10.73
+      cv_5fold_rmse_idr: 68.47
     hyperparameters:
       model_type: GradientBoostingRegressor
-      n_estimators: 30
-      learning_rate: 0.05
-      max_depth: 2
-      subsample: 1.0
+      n_estimators: 180
+      learning_rate: 0.06
+      max_depth: 3
+      subsample: 0.9
+      cv_folds: 5
+      train_samples: 465
+      test_samples: 30
       random_state: 42
       features_count: 9
     status: Active_Production
@@ -56,13 +62,16 @@ lineage_provenance:
   training_data:
     source_file: data/raw/usd_idr_raw.csv
     dvc_file: data/raw/usd_idr_raw.csv.dvc
-    dvc_md5: 79fc5c4addfe529143a6fffbce5322ac
-    version_tag: v2.0-dataset
+    dvc_md5: a05285c9f8b3421595311897eecf5861
+    total_records: 500
+    labeled_samples: 495
+    date_range: "2024-11-13 to 2026-10-13"
+    version_tag: v2.0-dataset-500d
   published_artifact:
     artifact_file: models/model_champion.pkl
     dvc_file: models/model_champion.pkl.dvc
-    dvc_md5: 3f4afe6234efac5ff10894bdd8d65c5e
-    size_bytes: 46952
+    dvc_md5: 996a6692fa22d40537fdca463b38c6a7
+    size_bytes: 337225
     serialization_format: cloudpickle
     framework_version: scikit-learn==1.5.2
     python_runtime: 3.13.14
@@ -71,7 +80,6 @@ inference_governance:
   serving_target: FastAPI REST Service (src/api/app.py)
   model_uri_production_stage: "models:/USD_IDR_Exchange_Rate_Regressor/Production"
   model_uri_production_alias: "models:/USD_IDR_Exchange_Rate_Regressor@production"
-  validation_gate: PASSED_RMSE_UNDER_20
+  validation_gate: PASSED_30DAY_OOS_AND_5FOLD_CV
   promoted_by: Tobias Andra Valentino (NIM 245150200111076)
-  promoted_date: "2026-11-02 19:27:43"
-
+  promoted_date: "2026-11-02 23:44:03"

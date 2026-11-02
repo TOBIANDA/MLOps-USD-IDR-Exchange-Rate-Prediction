@@ -58,10 +58,10 @@ def manage_stage_transitions() -> Dict[str, Any]:
     client.update_model_version(
         name=MODEL_NAME,
         version="1",
-        description="Version 1: Baseline GradientBoosting (depth=3, n_est=100, lr=0.05). RMSE: 27.34 IDR. Status: Superseded by v2.",
+        description="Version 1: Baseline GradientBoosting (depth=3, n_est=100, lr=0.05, subsample=0.8). 30-day Test RMSE: 21.30 IDR, MAE: 17.82 IDR, DirAcc: 69.0%. Status: Superseded by v2.",
     )
     client.set_model_version_tag(MODEL_NAME, "1", "lifecycle_phase", "Archived_Superseded")
-    client.set_model_version_tag(MODEL_NAME, "1", "benchmark_rmse", "27.34")
+    client.set_model_version_tag(MODEL_NAME, "1", "benchmark_rmse", "21.30_IDR")
 
     # 3. Simulate Version 2 Lifecycle
     # Step A: Promote Version 2 to Staging for validation gate
@@ -75,13 +75,19 @@ def manage_stage_transitions() -> Dict[str, Any]:
     client.set_model_version_tag(MODEL_NAME, "2", "staging_validation_date", datetime.datetime.now().strftime("%Y-%m-%d %H:%M:%S"))
     client.set_model_version_tag(MODEL_NAME, "2", "staging_status", "VALIDATED_TEST_PASS")
 
-    # Step B: Promote Version 2 to Production and automatically archive existing versions (v1)
-    logger.info("Step B: Promoting Version 2: Staging -> Production (with archive_existing_versions=True)...")
+    # Step B: Promote Version 2 to Production and explicitly archive Version 1
+    logger.info("Step B: Promoting Version 2: Staging -> Production and archiving Version 1...")
     client.transition_model_version_stage(
         name=MODEL_NAME,
         version="2",
         stage="Production",
         archive_existing_versions=True,
+    )
+    client.transition_model_version_stage(
+        name=MODEL_NAME,
+        version="1",
+        stage="Archived",
+        archive_existing_versions=False,
     )
 
     # Set Model Aliases (MLflow modern standard)
@@ -94,9 +100,9 @@ def manage_stage_transitions() -> Dict[str, Any]:
     client.set_model_version_tag(MODEL_NAME, "2", "deployment_status", "ACTIVE_PRODUCTION")
     client.set_model_version_tag(MODEL_NAME, "2", "promoted_by", "Tobias Andra Valentino")
     client.set_model_version_tag(MODEL_NAME, "2", "promoted_at", datetime.datetime.now().strftime("%Y-%m-%d %H:%M:%S"))
-    client.set_model_version_tag(MODEL_NAME, "2", "performance_rmse", "14.90_IDR")
-    client.set_model_version_tag(MODEL_NAME, "2", "performance_mae", "13.80_IDR")
-    client.set_model_version_tag(MODEL_NAME, "2", "directional_accuracy", "60.0%")
+    client.set_model_version_tag(MODEL_NAME, "2", "performance_rmse", "19.46_IDR")
+    client.set_model_version_tag(MODEL_NAME, "2", "performance_mae", "16.73_IDR")
+    client.set_model_version_tag(MODEL_NAME, "2", "directional_accuracy", "72.4%")
     client.set_model_version_tag(MODEL_NAME, "2", "inference_sla_ms", "<10ms")
 
     # 4. Readback and Print Registry Status

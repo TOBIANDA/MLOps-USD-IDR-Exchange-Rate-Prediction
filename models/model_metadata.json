@@ -4,25 +4,25 @@
   "test_end_date": "2026-10-12",
   "benchmarks": {
     "Naive_Random_Walk": {
-      "MAE": 34.17,
-      "RMSE": 47.7,
-      "MAPE_pct": 0.19,
+      "MAE": 10.25,
+      "RMSE": 14.86,
+      "MAPE_pct": 0.057,
       "Directional_Accuracy_pct": 0.0
     },
     "Moving_Average_7D": {
-      "MAE": 37.85,
-      "RMSE": 59.85,
-      "MAPE_pct": 0.21,
-      "Directional_Accuracy_pct": 60.0
+      "MAE": 78.68,
+      "RMSE": 94.18,
+      "MAPE_pct": 0.436,
+      "Directional_Accuracy_pct": 22.2
     }
   },
   "candidate_model": {
     "model_type": "RidgeRegression",
     "metrics": {
-      "MAE": 41.77,
-      "RMSE": 51.25,
-      "MAPE_pct": 0.232,
-      "Directional_Accuracy_pct": 70.0
+      "MAE": 12.45,
+      "RMSE": 16.49,
+      "MAPE_pct": 0.069,
+      "Directional_Accuracy_pct": 66.7
     },
     "beats_random_walk_mae": false
   }

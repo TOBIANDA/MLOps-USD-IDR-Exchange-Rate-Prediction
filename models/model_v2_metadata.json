@@ -1,27 +1,31 @@
 {
   "model_name": "USD_IDR_Exchange_Rate_Regressor",
   "version": 2,
-  "run_id": "ef6240024fc14f6886fffdea856c5dac",
+  "run_id": "d1936a326ef64647ba1558204c4acb44",
   "run_name": "Run_5_GradientBoosting_Tuned_v2",
   "stage": "None",
-  "dvc_data_hash": "79fc5c4addfe529143a6fffbce5322ac",
+  "dvc_data_hash": "a05285c9f8b3421595311897eecf5861",
   "metrics": {
-    "MAE": 13.8,
-    "RMSE": 14.9,
-    "MAPE_pct": 0.077,
-    "R2_Score": -0.8855,
-    "Directional_Accuracy_pct": 60.0,
-    "Train_RMSE": 19.49
+    "MAE": 16.73,
+    "RMSE": 19.46,
+    "MAPE_pct": 0.091,
+    "R2_Score": 0.9914,
+    "Directional_Accuracy_pct": 72.4,
+    "Train_RMSE": 10.73,
+    "CV_5Fold_RMSE": 68.47
   },
   "params": {
     "model_type": "GradientBoostingRegressor",
-    "version": "v2.0-optimized",
-    "n_estimators": 30,
-    "learning_rate": 0.05,
-    "max_depth": 2,
-    "subsample": 1.0,
+    "version": "v2.0-cv-tuned",
+    "n_estimators": 180,
+    "learning_rate": 0.06,
+    "max_depth": 3,
+    "subsample": 0.9,
+    "cv_folds": 5,
+    "train_samples": 465,
+    "test_samples": 30,
     "random_state": 42,
     "features_count": 9
   },
-  "model_uri": "runs:/ef6240024fc14f6886fffdea856c5dac/model"
+  "model_uri": "models:/m-485db6c91e29492a9e1c060fd0e248c4"
 }

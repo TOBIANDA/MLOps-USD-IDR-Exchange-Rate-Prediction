@@ -255,7 +255,8 @@ flowchart LR
 | Versi Dataset | Git Tag | Jumlah Baris | Rentang Tanggal Observasi | Ukuran Berkas | Hash MD5 | Keterangan Status |
 |:---:|:---:|:---:|:---:|:---:|:---:|:---|
 | **v1.0** | `v1.0-dataset` | 10 baris | 15 Sep – 28 Sep 2026 | 549 bytes | `e1330ecab9886b29f29f090eff2716c6` | *Baseline Ingestion* (LK-04) |
-| **v2.0** | `v2.0-dataset` | 22 baris | 14 Sep – 13 Okt 2026 | 1.156 bytes | `79fc5c4addfe529143a6fffbce5322ac` | *Continual Learning Batch* (+12 baris) |
+| **v2.0** | `v2.0-dataset` | 22 baris | 14 Sep – 13 Okt 2026 | 1.156 bytes | `79fc5c4addfe529143a6fffbce5322ac` | *Continual Learning Delta Batch* (LK-05) |
+| **v3.0** | `v3.0-dataset-500d` | **500 baris** | **13 Nov 2024 – 13 Okt 2026** | **24.349 bytes** | `a05285c9f8b3421595311897eecf5861` | *Full Historical Sliding Window (~2 Tahun Bursa)* |
 
 ---
 
@@ -354,27 +355,28 @@ Sesuai *Efficient Market Hypothesis* (EMH), model Machine Learning wajib dievalu
 
 ## 🏆 9. Model Registry, Versioning, dan Status Model Produksi (LK-07)
 
-Seluruh artefak model peramalan kurs USD/IDR dikelola siklus hidupnya secara tersentralisasi menggunakan **MLflow Model Registry** dengan pelacakan silsilah data terikat **DVC**:
+Seluruh artefak model peramalan kurs USD/IDR dikelola siklus hidupnya secara tersentralisasi menggunakan **MLflow Model Registry** dengan pelacakan silsilah data 500 hari bursa terikat **DVC**:
 
 - **Model Registry Entity**: `USD_IDR_Exchange_Rate_Regressor`
 - **Versi Aktif Digunakan untuk Inferensi**: **Versi 2 (v2)**
 - **Status Stage**: **`Production`**
 - **Model Aliases**: **`@production`**, **`@champion`**
-- **Silsilah Eksperimen**: Run ID `ef6240024fc14f6886fffdea856c5dac` (`Run_5_GradientBoosting_Tuned_v2`)
-- **DVC Model Pointer**: `models/model_champion.pkl.dvc` (MD5: `3f4afe6234efac5ff10894bdd8d65c5e`)
-- **DVC Training Data Pointer**: `data/raw/usd_idr_raw.csv.dvc` (MD5: `79fc5c4addfe529143a6fffbce5322ac`)
+- **Silsilah Eksperimen**: Run ID `d1936a326ef64647ba1558204c4acb44` (`Run_5_GradientBoosting_Tuned_v2`)
+- **Dataset Pelatihan & Uji**: 500 hari bursa (`2024-11-13` s.d. `2026-10-13`), 495 sampel berlabel (**465 hari latih**, **30 hari uji out-of-sample**)
+- **DVC Model Pointer**: `models/model_champion.pkl.dvc` (MD5: `996a6692fa22d40537fdca463b38c6a7`, `337.225 bytes`)
+- **DVC Training Data Pointer**: `data/raw/usd_idr_raw.csv.dvc` (MD5: `a05285c9f8b3421595311897eecf5861`, `24.349 bytes`, `500 rows`)
 
 ### 💡 Alasan Pemilihan Model Versi 2 sebagai Model Produksi Aktif:
-1. **Peningkatan Akurasi Galat (45.5% Lebih Presisi)**: Nilai RMSE turun dari **27.34 IDR** (Versi 1) menjadi **14.90 IDR** (Versi 2), dengan MAE sebesar **13.80 IDR**.
-2. **Regularisasi Alami Anti-Overfitting**: Arsitektur pohon dangkal (`max_depth=2`, `n_estimators=30`, `subsample=1.0`) terbukti mencegah memorisasi fluktuasi acak harian pada data latih.
-3. **Peningkatan Directional Accuracy**: Ketepatan prediksi arah pergerakan kurs melonjak dari **40.0%** ke **60.0%**.
-4. **Kepatuhan SLA Inferensi Real-Time**: Model dapat dimuat via alias URI dalam **115.06 ms** dengan latensi inferensi rata-rata **2.312 ms** (jauh di bawah batas toleransi industri perbankan <50 ms).
+1. **Penurunan Galat Uji Sebesar 8.63% vs Versi 1 & 28.39% vs Benchmark Random Walk**: Nilai Test RMSE pada 30 hari bursa pengujian turun dari **21.30 IDR** (Versi 1) menjadi **19.46 IDR** (Versi 2), mengungguli benchmark *Naive Random Walk* (**27.18 IDR**) dan *Moving Average 7 Hari* (**129.07 IDR**), dengan MAE sebesar **16.73 IDR** dan $R^2 = 0.9914$.
+2. **Optimasi Berbasis 5-Fold Expanding Window TimeSeriesSplit CV**: Konfigurasi (`n_estimators=180`, `learning_rate=0.06`, `max_depth=3`, `subsample=0.9`) dipilih secara sistematis melalui validasi silang 5-Fold `TimeSeriesSplit` pada 465 hari bursa pelatihan (CV RMSE turun dari **70.77 IDR** ke **68.47 IDR**).
+3. **Peningkatan Directional Accuracy**: Ketepatan prediksi arah pergerakan harian kurs meningkat dari **68.97%** (Versi 1) menjadi **72.41%** (Versi 2).
+4. **Kepatuhan SLA Inferensi Real-Time**: Model dapat dimuat via alias URI dalam **129.03 ms** dengan latensi inferensi rata-rata **1.919 ms** (`p95: 2.995 ms`, jauh di bawah batas toleransi industri perbankan <50 ms).
 
 ### Status Siklus Hidup Versi Model:
-| Nomor Versi | Status Stage | Model Aliases | Algoritma & Parameter Kunci | RMSE (IDR) | Keterangan Operasional |
-| :---: | :---: | :---: | :--- | :---: | :--- |
-| **Versi 2** | **Production** | `@production`, `@champion` | GradientBoosting (depth=2, n_est=30, lr=0.05) | **14.90** | **Aktif melayani inferensi produksi** |
-| **Versi 1** | **Archived** | `@archived` | GradientBoosting (depth=3, n_est=100, lr=0.05) | 27.34 | Diarsipkan resmi (superseded) |
+| Nomor Versi | Status Stage | Model Aliases | Algoritma & Parameter Kunci | 5-Fold CV RMSE | Test RMSE (30d) | DirAcc | Keterangan Operasional |
+| :---: | :---: | :---: | :--- | :---: | :---: | :---: | :--- |
+| **Versi 2** | **Production** | `@production`, `@champion` | GradientBoosting (depth=3, n_est=180, lr=0.06, sub=0.9) | **68.47 IDR** | **19.46 IDR** | **72.41%** | **Aktif melayani inferensi produksi** |
+| **Versi 1** | **Archived** | `@archived` | GradientBoosting (depth=3, n_est=100, lr=0.05, sub=0.8) | 70.77 IDR | 21.30 IDR | 68.97% | Diarsipkan resmi (superseded) |
 
 ---
 
