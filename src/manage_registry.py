@@ -129,3 +129,4 @@ if __name__ == "__main__":
     result = manage_stage_transitions()
     print("\n--- MODEL REGISTRY STATUS ---")
     print(json.dumps(result, indent=2))
+

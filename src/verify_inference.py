@@ -162,3 +162,4 @@ def test_production_inference() -> Dict[str, Any]:
 
 if __name__ == "__main__":
     test_production_inference()
+
