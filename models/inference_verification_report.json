@@ -1,0 +1,24 @@
+{
+  "status": "SUCCESS_VERIFIED",
+  "model_name": "USD_IDR_Exchange_Rate_Regressor",
+  "stage_uri": "models:/USD_IDR_Exchange_Rate_Regressor/Production",
+  "alias_uri": "models:/USD_IDR_Exchange_Rate_Regressor@production",
+  "stage_load_time_ms": 8611.43,
+  "alias_load_time_ms": 115.06,
+  "inference_latency": {
+    "avg_ms": 2.312,
+    "p50_ms": 2.068,
+    "p95_ms": 3.33
+  },
+  "forecast_h1": {
+    "base_date": "2026-10-13",
+    "kurs_jual_prediksi": 17998.97,
+    "kurs_beli_prediksi": 17820.0,
+    "kurs_tengah_prediksi": 17909.49,
+    "estimated_spread": 178.97,
+    "confidence_interval_95": {
+      "lower": 17977.33,
+      "upper": 18020.61
+    }
+  }
+}

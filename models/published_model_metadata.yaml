@@ -1,0 +1,76 @@
+# ==============================================================================
+# MLflow Model Registry & DVC Lineage Metadata
+# Lembar Kerja 07 (LK-07): Model Registry, Versioning, dan Kesiapan Inferensi
+# Program Studi: Magister Ilmu Komputer FILKOM Universitas Brawijaya
+# ==============================================================================
+
+model_registry:
+  name: USD_IDR_Exchange_Rate_Regressor
+  active_version: 2
+  active_stage: Production
+  aliases:
+    - production
+    - champion
+  status: READY
+  description: >
+    Model regresi time-series peramalan kurs harian USD/IDR (Bank Indonesia)
+    berbasis Gradient Boosting Regressor yang telah dioptimasi hyperparameternya
+    dan divalidasi siap inferensi produksi.
+
+lifecycle_history:
+  v1:
+    version: 1
+    stage: Archived
+    run_id: 851b703b994541eca6737a96b5aacd7d
+    run_name: Run_4_GradientBoosting_Champion
+    metrics:
+      rmse_idr: 27.34
+      mae_idr: 25.63
+      mape_pct: 0.143
+      directional_accuracy_pct: 40.0
+    status: Archived_Superseded
+    reason: Digantikan oleh v2 yang memiliki penurunan galat kuadrat sebesar 45.5%.
+  v2:
+    version: 2
+    stage: Production
+    run_id: ef6240024fc14f6886fffdea856c5dac
+    run_name: Run_5_GradientBoosting_Tuned_v2
+    metrics:
+      rmse_idr: 14.90
+      mae_idr: 13.80
+      mape_pct: 0.077
+      r2_score: -0.8855
+      directional_accuracy_pct: 60.0
+      train_rmse_idr: 19.49
+    hyperparameters:
+      model_type: GradientBoostingRegressor
+      n_estimators: 30
+      learning_rate: 0.05
+      max_depth: 2
+      subsample: 1.0
+      random_state: 42
+      features_count: 9
+    status: Active_Production
+
+lineage_provenance:
+  training_data:
+    source_file: data/raw/usd_idr_raw.csv
+    dvc_file: data/raw/usd_idr_raw.csv.dvc
+    dvc_md5: 79fc5c4addfe529143a6fffbce5322ac
+    version_tag: v2.0-dataset
+  published_artifact:
+    artifact_file: models/model_champion.pkl
+    dvc_file: models/model_champion.pkl.dvc
+    dvc_md5: 3f4afe6234efac5ff10894bdd8d65c5e
+    size_bytes: 46952
+    serialization_format: cloudpickle
+    framework_version: scikit-learn==1.5.2
+    python_runtime: 3.13.14
+
+inference_governance:
+  serving_target: FastAPI REST Service (src/api/app.py)
+  model_uri_production_stage: "models:/USD_IDR_Exchange_Rate_Regressor/Production"
+  model_uri_production_alias: "models:/USD_IDR_Exchange_Rate_Regressor@production"
+  validation_gate: PASSED_RMSE_UNDER_20
+  promoted_by: Tobias Andra Valentino (NIM 245150200111076)
+  promoted_date: "2026-11-02 19:27:43"

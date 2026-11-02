@@ -352,10 +352,37 @@ Sesuai *Efficient Market Hypothesis* (EMH), model Machine Learning wajib dievalu
 
 ---
 
-## ✉️ 9. Undangan Kolaborator Dosen
+## 🏆 9. Model Registry, Versioning, dan Status Model Produksi (LK-07)
+
+Seluruh artefak model peramalan kurs USD/IDR dikelola siklus hidupnya secara tersentralisasi menggunakan **MLflow Model Registry** dengan pelacakan silsilah data terikat **DVC**:
+
+- **Model Registry Entity**: `USD_IDR_Exchange_Rate_Regressor`
+- **Versi Aktif Digunakan untuk Inferensi**: **Versi 2 (v2)**
+- **Status Stage**: **`Production`**
+- **Model Aliases**: **`@production`**, **`@champion`**
+- **Silsilah Eksperimen**: Run ID `ef6240024fc14f6886fffdea856c5dac` (`Run_5_GradientBoosting_Tuned_v2`)
+- **DVC Model Pointer**: `models/model_champion.pkl.dvc` (MD5: `3f4afe6234efac5ff10894bdd8d65c5e`)
+- **DVC Training Data Pointer**: `data/raw/usd_idr_raw.csv.dvc` (MD5: `79fc5c4addfe529143a6fffbce5322ac`)
+
+### 💡 Alasan Pemilihan Model Versi 2 sebagai Model Produksi Aktif:
+1. **Peningkatan Akurasi Galat (45.5% Lebih Presisi)**: Nilai RMSE turun dari **27.34 IDR** (Versi 1) menjadi **14.90 IDR** (Versi 2), dengan MAE sebesar **13.80 IDR**.
+2. **Regularisasi Alami Anti-Overfitting**: Arsitektur pohon dangkal (`max_depth=2`, `n_estimators=30`, `subsample=1.0`) terbukti mencegah memorisasi fluktuasi acak harian pada data latih.
+3. **Peningkatan Directional Accuracy**: Ketepatan prediksi arah pergerakan kurs melonjak dari **40.0%** ke **60.0%**.
+4. **Kepatuhan SLA Inferensi Real-Time**: Model dapat dimuat via alias URI dalam **115.06 ms** dengan latensi inferensi rata-rata **2.312 ms** (jauh di bawah batas toleransi industri perbankan <50 ms).
+
+### Status Siklus Hidup Versi Model:
+| Nomor Versi | Status Stage | Model Aliases | Algoritma & Parameter Kunci | RMSE (IDR) | Keterangan Operasional |
+| :---: | :---: | :---: | :--- | :---: | :--- |
+| **Versi 2** | **Production** | `@production`, `@champion` | GradientBoosting (depth=2, n_est=30, lr=0.05) | **14.90** | **Aktif melayani inferensi produksi** |
+| **Versi 1** | **Archived** | `@archived` | GradientBoosting (depth=3, n_est=100, lr=0.05) | 27.34 | Diarsipkan resmi (superseded) |
+
+---
+
+## ✉️ 10. Undangan Kolaborator Dosen
 Untuk transparansi monitoring berkala:
 1. Masuk ke tab **Settings** repositori GitHub.
 2. Pilih menu **Collaborators** > **Add people**.
 3. Masukkan email dosen pengampu: `rizalespe@gmail.com` dan kirim undangan kolaborasi.
+
 
 

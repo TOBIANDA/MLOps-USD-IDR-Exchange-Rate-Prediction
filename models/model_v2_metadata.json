@@ -1,0 +1,27 @@
+{
+  "model_name": "USD_IDR_Exchange_Rate_Regressor",
+  "version": 2,
+  "run_id": "ef6240024fc14f6886fffdea856c5dac",
+  "run_name": "Run_5_GradientBoosting_Tuned_v2",
+  "stage": "None",
+  "dvc_data_hash": "79fc5c4addfe529143a6fffbce5322ac",
+  "metrics": {
+    "MAE": 13.8,
+    "RMSE": 14.9,
+    "MAPE_pct": 0.077,
+    "R2_Score": -0.8855,
+    "Directional_Accuracy_pct": 60.0,
+    "Train_RMSE": 19.49
+  },
+  "params": {
+    "model_type": "GradientBoostingRegressor",
+    "version": "v2.0-optimized",
+    "n_estimators": 30,
+    "learning_rate": 0.05,
+    "max_depth": 2,
+    "subsample": 1.0,
+    "random_state": 42,
+    "features_count": 9
+  },
+  "model_uri": "runs:/ef6240024fc14f6886fffdea856c5dac/model"
+}
