@@ -11,6 +11,8 @@ import os
 from pathlib import Path
 from typing import Any, Dict, List, Tuple
 
+import matplotlib
+matplotlib.use("Agg")
 import matplotlib.pyplot as plt
 import numpy as np
 import pandas as pd
@@ -27,7 +29,7 @@ logging.basicConfig(
 logger = logging.getLogger("train_mlflow")
 os.environ["MLFLOW_DISABLE_AGENT_HINT"] = "1"
 
-PROJECT_ROOT = Path(__file__).resolve().parent.parent
+PROJECT_ROOT = Path(__file__).resolve().parent
 DEFAULT_RAW_DATA = PROJECT_ROOT / "data" / "raw" / "usd_idr_raw.csv"
 DEFAULT_DVC_FILE = PROJECT_ROOT / "data" / "raw" / "usd_idr_raw.csv.dvc"
 DEFAULT_DB_PATH = PROJECT_ROOT / "data" / "exchange_rates.db"
@@ -363,6 +365,8 @@ def run_experiment_pipeline(
                 "run_id": run_id,
                 "run_name": run_name,
                 "model_type": params["model_type"],
+                "dvc_hash": dvc_hash,
+                "data_version": "v2.0-dataset-500d",
                 "metrics": metrics,
                 "params": params,
             }

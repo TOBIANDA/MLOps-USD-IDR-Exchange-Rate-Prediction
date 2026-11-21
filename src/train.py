@@ -11,6 +11,8 @@ import os
 from pathlib import Path
 from typing import Any, Dict, List, Tuple
 
+import matplotlib
+matplotlib.use("Agg")
 import matplotlib.pyplot as plt
 import numpy as np
 import pandas as pd
@@ -363,6 +365,8 @@ def run_experiment_pipeline(
                 "run_id": run_id,
                 "run_name": run_name,
                 "model_type": params["model_type"],
+                "dvc_hash": dvc_hash,
+                "data_version": "v2.0-dataset-500d",
                 "metrics": metrics,
                 "params": params,
             }

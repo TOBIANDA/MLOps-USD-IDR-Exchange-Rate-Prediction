@@ -1,0 +1,20 @@
+.git
+.github
+.pytest_cache
+.venv
+venv
+__pycache__
+*.py[cod]
+mlbb_counter_web
+scratch
+analis
+jaringan nirkabel
+materi
+LK0*
+lk0*
+mlruns
+mlflow.db*
+*.docx
+*.pdf
+*.pptx*
+.dvc

@@ -380,7 +380,62 @@ Seluruh artefak model peramalan kurs USD/IDR dikelola siklus hidupnya secara ter
 
 ---
 
-## ✉️ 10. Undangan Kolaborator Dosen
+## 🤖 10. Otomatisasi Pipeline MLOps Berbasis "Code as a Trigger" (LK-08)
+
+Setiap perubahan kode (`push` ke branch `main` atau `pull_request`) secara otomatis memicu pipeline CI/CD 4 tahap pada GitHub Actions melalui berkas konfigurasi [`.github/workflows/mlops-automation.yaml`](.github/workflows/mlops-automation.yaml):
+
+1. **Stage 1 — Automated Testing (`pytest tests/ -v`)**: Memverifikasi seluruh modul ingesti, prapemrosesan, fitur bebas kebocoran masa depan, API serving, serta aturan gerbang evaluasi.
+2. **Stage 2 — Automated Training (`train.py`)**: Menarik/menghidrasi dataset 500 hari bursa yang terlacak DVC (`data/raw/usd_idr_raw.csv.dvc`) dan melatih kandidat model dengan pelacakan MLflow.
+3. **Stage 3 — Model Evaluation & Validation (`src/evaluate_model.py`)**: Memvalidasi kandidat model terhadap seluruh ambang batas **LK-01 Subbab 5.1** (`MAE < Rp75`, `MAPE < 0,5%`, `Directional Accuracy > 60%`) dan wajib mengungguli baseline *Naive Random Walk*.
+4. **Stage 4 — Auto-Registry Update (`src/register_staging.py`)**: Apabila seluruh pemeriksaan lulus (`gate_status == PASSED`), model otomatis didaftarkan ke **MLflow Model Registry** dengan status **`Staging`** dan alias **`@staging`** disertai metadata commit Git SHA dan hash DVC.
+
+---
+
+## 🐳 11. Orkestrasi Layanan ML Terintegrasi Menggunakan Docker Compose (LK-09)
+
+Sistem inferensi produksi dan MLflow Tracking Server telah dikontainerisasi dan diorkestrasi agar berjalan bersamaan dalam satu *custom bridge network* (`mlops-bridge-network`) dengan penyimpanan persisten.
+
+### Arsitektur Layanan (`docker-compose.yaml`)
+| Layanan | Nama Kontainer | Port | Jaringan | Penyimpanan Persisten (Volumes) | Ketergantungan (`depends_on`) |
+| :--- | :--- | :---: | :--- | :--- | :--- |
+| **`mlflow-server`** | `mlops-mlflow-server` | `5000:5000` | `mlops-bridge-network` | `mlops-mlflow-db` (`/mlflow/db`), `mlops-mlflow-artifacts` (`/mlflow/artifacts`) | — (Memiliki `healthcheck` HTTP `/health`) |
+| **`api-service`** | `mlops-api-service` | `8000:8000` | `mlops-bridge-network` | `mlops-api-data` (`/app/data_persist`), `./data/exchange_rates.db:ro` | Menunggu `mlflow-server` berstatus `service_healthy` |
+
+### Cara Menjalankan Seluruh Sistem dengan Satu Perintah Docker Compose
+1. **Bangun image dan jalankan seluruh kontainer di latar belakang**:
+   ```bash
+   docker compose up -d --build
+   ```
+2. **Periksa status kesehatan kontainer**:
+   ```bash
+   docker compose ps
+   ```
+3. *(Opsional, saat inisiasi volume pertama kali)* **Daftarkan Model Registry Version 1 & Version 2 ke server MLflow terkontainerisasi dan muat ulang API**:
+   ```bash
+   docker compose exec api-service python src/bootstrap_docker_registry.py
+   curl -X POST http://localhost:8000/model/reload
+   ```
+4. **Verifikasi komunikasi antar-kontainer & endpoint layanan**:
+   ```bash
+   # Cek health & koneksi DNS internal http://mlflow-server:5000
+   curl http://localhost:8000/health
+
+   # Cek metadata Model Registry langsung dari mlflow-server via api-service
+   curl http://localhost:8000/model/registry
+
+   # Uji inferensi prediksi H+1 USD/IDR dari model Production di MLflow Registry
+   curl http://localhost:8000/predict/h1
+   ```
+   - **MLflow Tracking & Model Registry UI**: `http://localhost:5000`
+   - **FastAPI Interactive Swagger UI**: `http://localhost:8000/docs`
+5. **Menghentikan layanan tanpa menghapus data persisten (volume tetap aman)**:
+   ```bash
+   docker compose down
+   ```
+
+---
+
+## ✉️ 12. Undangan Kolaborator Dosen
 Untuk transparansi monitoring berkala:
 1. Masuk ke tab **Settings** repositori GitHub.
 2. Pilih menu **Collaborators** > **Add people**.

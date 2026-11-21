@@ -2,10 +2,19 @@
 Unit tests for FastAPI serving layer.
 """
 
+import pytest
 from fastapi.testclient import TestClient
-from src.api.app import app
+from src.api.app import MODEL_PATH, app
+from src.models.trainer import train_and_evaluate
 
 client = TestClient(app)
+
+
+@pytest.fixture(autouse=True, scope="module")
+def ensure_model_exists():
+    """Bootstrap local model artifact on clean CI checkouts if DVC model is absent."""
+    if not MODEL_PATH.exists():
+        train_and_evaluate(test_days=10)
 
 def test_api_root():
     res = client.get("/")

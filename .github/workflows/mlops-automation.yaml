@@ -1,0 +1,207 @@
+name: MLOps Automation - Code as a Trigger
+
+on:
+  push:
+    branches:
+      - main
+  pull_request:
+    branches:
+      - main
+  workflow_dispatch:
+
+jobs:
+  automated-testing:
+    name: "Stage 1: Automated Testing (Pytest)"
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Set up Python 3.12
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+          cache: "pip"
+
+      - name: Install dependencies
+        run: |
+          python -m pip install --upgrade pip
+          pip install -r requirements.txt
+
+      - name: Run automated unit test suite
+        run: |
+          pytest tests/ -v --tb=short
+
+  automated-training:
+    name: "Stage 2: Automated Training (DVC + train.py)"
+    needs: automated-testing
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Set up Python 3.12
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+          cache: "pip"
+
+      - name: Install dependencies and DVC
+        run: |
+          python -m pip install --upgrade pip
+          pip install -r requirements.txt dvc
+
+      - name: Sync DVC-Managed Dataset
+        run: |
+          python - << 'EOF'
+          import sqlite3
+          import subprocess
+          from pathlib import Path
+          import pandas as pd
+
+          dvc_meta = Path("data/raw/usd_idr_raw.csv.dvc")
+          print("DVC pointer exists:", dvc_meta.exists())
+          if dvc_meta.exists():
+              print(dvc_meta.read_text(encoding="utf-8"))
+
+          subprocess.run(["dvc", "pull", "data/raw/usd_idr_raw.csv.dvc"], check=False)
+
+          raw_csv = Path("data/raw/usd_idr_raw.csv")
+          if not raw_csv.exists():
+              print("Local DVC remote unreachable in cloud runner; hydrating canonical CSV from Git-tracked SQLite DB...")
+              raw_csv.parent.mkdir(parents=True, exist_ok=True)
+              with sqlite3.connect("data/exchange_rates.db") as conn:
+                  df = pd.read_sql(
+                      "SELECT tgl, beli, jual, tengah, spread, mata_uang FROM exchange_rates ORDER BY tgl ASC",
+                      conn,
+                  )
+              df.to_csv(raw_csv, index=False)
+
+          df_check = pd.read_csv(raw_csv)
+          print(f"Materialized dataset: {len(df_check)} rows | {df_check['tgl'].iloc[0]} -> {df_check['tgl'].iloc[-1]}")
+          EOF
+
+      - name: Execute Automated Retraining (train.py)
+        run: |
+          python train.py --data-path data/raw/usd_idr_raw.csv --tracking-uri sqlite:///mlflow.db --no-register
+
+      - name: Upload training outputs artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: training-outputs
+          path: |
+            mlflow.db
+            mlruns/
+            data/raw/usd_idr_raw.csv
+            models/best_model_metadata.json
+            models/experiments_comparison.json
+            models/model_champion.pkl
+          retention-days: 7
+
+  model-evaluation:
+    name: "Stage 3: Model Evaluation & Validation"
+    needs: automated-training
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Set up Python 3.12
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+          cache: "pip"
+
+      - name: Install dependencies
+        run: |
+          python -m pip install --upgrade pip
+          pip install -r requirements.txt
+
+      - name: Download training outputs
+        uses: actions/download-artifact@v4
+        with:
+          name: training-outputs
+
+      - name: Validate candidate model against LK-01 thresholds
+        run: |
+          python src/evaluate_model.py
+
+      - name: Upload evaluation report artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: evaluation-report
+          path: models/evaluation_gate_report.json
+          retention-days: 7
+
+  auto-registry-update:
+    name: "Stage 4: Auto-Registry Update (Staging)"
+    needs: model-evaluation
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Set up Python 3.12
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+          cache: "pip"
+
+      - name: Install dependencies
+        run: |
+          python -m pip install --upgrade pip
+          pip install -r requirements.txt
+
+      - name: Download training outputs
+        uses: actions/download-artifact@v4
+        with:
+          name: training-outputs
+
+      - name: Download evaluation report
+        uses: actions/download-artifact@v4
+        with:
+          name: evaluation-report
+
+      - name: Register validated model to MLflow Staging
+        run: |
+          python src/register_staging.py --tracking-uri sqlite:///mlflow.db
+
+      - name: Publish CI/CD Summary
+        run: |
+          python - << 'EOF'
+          import json
+          import os
+
+          ev = json.load(open("models/evaluation_gate_report.json", encoding="utf-8"))
+          st = json.load(open("models/staging_registration_report.json", encoding="utf-8"))
+          m = ev["candidate"]["metrics"]
+          b = ev["baseline_naive_random_walk"]
+          lines = [
+              "## MLOps Automation Pipeline Summary (Code as a Trigger)",
+              "",
+              f"- **Commit SHA**: `{st['git_sha']}`",
+              f"- **Trigger Event**: `{st['ci_event']}`",
+              f"- **Candidate Run**: `{ev['candidate']['run_name']}` (`{ev['candidate']['run_id']}`)",
+              f"- **Validation Gate**: **{ev['gate_status']}**",
+              f"- **Registered Model**: `{st['model_name']}` **Version {st['version']}** (Stage: **{st['stage']}**, Alias: `@{st['alias']}`)",
+              "",
+              "| Metric | Candidate Model | Naive Random Walk | LK-01 Threshold | Gate |",
+              "| :--- | :---: | :---: | :---: | :---: |",
+              f"| MAE (IDR) | {m['MAE']} | {b['MAE']} | < 75.0 & < Naive | PASS |",
+              f"| RMSE (IDR) | {m['RMSE']} | {b['RMSE']} | Informative | - |",
+              f"| MAPE (%) | {m['MAPE_pct']}% | {b['MAPE_pct']}% | < 0.5% | PASS |",
+              f"| Directional Accuracy (%) | {m['Directional_Accuracy_pct']}% | - | > 60.0% | PASS |",
+          ]
+          summary_path = os.environ["GITHUB_STEP_SUMMARY"]
+          with open(summary_path, "a", encoding="utf-8") as f:
+              f.write("\n".join(lines) + "\n")
+          EOF
+
+      - name: Upload staging registry artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: staging-registry-outputs
+          path: |
+            models/staging_registration_report.json
+            mlflow.db
+          retention-days: 7

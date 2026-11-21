@@ -1,0 +1,61 @@
+services:
+  mlflow-server:
+    build:
+      context: .
+      dockerfile: Dockerfile.mlflow
+    container_name: mlops-mlflow-server
+    ports:
+      - "5000:5000"
+    volumes:
+      - mlflow-db:/mlflow/db
+      - mlflow-artifacts:/mlflow/artifacts
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:5000/health"]
+      interval: 10s
+      timeout: 5s
+      retries: 10
+      start_period: 15s
+    networks:
+      - mlops-network
+    restart: unless-stopped
+
+  api-service:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    container_name: mlops-api-service
+    ports:
+      - "8000:8000"
+    environment:
+      - MLFLOW_TRACKING_URI=http://mlflow-server:5000
+      - MODEL_NAME=USD_IDR_Exchange_Rate_Regressor
+      - MODEL_ALIAS=production
+      - MODEL_STAGE=Production
+    volumes:
+      - api-data:/app/data_persist
+      - ./data/exchange_rates.db:/app/data/exchange_rates.db:ro
+    depends_on:
+      mlflow-server:
+        condition: service_healthy
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8000/health"]
+      interval: 10s
+      timeout: 5s
+      retries: 10
+      start_period: 15s
+    networks:
+      - mlops-network
+    restart: unless-stopped
+
+networks:
+  mlops-network:
+    name: mlops-bridge-network
+    driver: bridge
+
+volumes:
+  mlflow-db:
+    name: mlops-mlflow-db
+  mlflow-artifacts:
+    name: mlops-mlflow-artifacts
+  api-data:
+    name: mlops-api-data
