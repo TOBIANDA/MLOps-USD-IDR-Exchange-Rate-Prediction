@@ -256,7 +256,7 @@ flowchart LR
 |:---:|:---:|:---:|:---:|:---:|:---:|:---|
 | **v1.0** | `v1.0-dataset` | 10 baris | 15 Sep – 28 Sep 2026 | 549 bytes | `e1330ecab9886b29f29f090eff2716c6` | *Baseline Ingestion* (LK-04) |
 | **v2.0** | `v2.0-dataset` | 22 baris | 14 Sep – 13 Okt 2026 | 1.156 bytes | `79fc5c4addfe529143a6fffbce5322ac` | *Continual Learning Delta Batch* (LK-05) |
-| **v3.0** | `v3.0-dataset-500d` | **500 baris** | **13 Nov 2024 – 13 Okt 2026** | **24.349 bytes** | `a05285c9f8b3421595311897eecf5861` | *Full Historical Sliding Window (~2 Tahun Bursa)* |
+| **v3.0** | `v3.0-bi-real-475d` | **475 baris** | **22 Nov 2024 – 20 Nov 2026** | **23.116 bytes** | `843ba914fd623a74280ecdd5513d4a27` | *Genuine Bank Indonesia Historical Window (2 Tahun Bursa Asli)* |
 
 ---
 
@@ -353,30 +353,28 @@ Sesuai *Efficient Market Hypothesis* (EMH), model Machine Learning wajib dievalu
 
 ---
 
-## 🏆 9. Model Registry, Versioning, dan Status Model Produksi (LK-07)
+## 🏆 9. Model Registry, Versioning, dan Status Model Produksi (LK-07 / Terkini)
 
-Seluruh artefak model peramalan kurs USD/IDR dikelola siklus hidupnya secara tersentralisasi menggunakan **MLflow Model Registry** dengan pelacakan silsilah data 500 hari bursa terikat **DVC**:
+Seluruh artefak model peramalan kurs USD/IDR dikelola siklus hidupnya secara tersentralisasi menggunakan **MLflow Model Registry** dengan pelacakan silsilah data historis asli Bank Indonesia (**475 hari bursa**) terikat **DVC**:
 
 - **Model Registry Entity**: `USD_IDR_Exchange_Rate_Regressor`
 - **Versi Aktif Digunakan untuk Inferensi**: **Versi 2 (v2)**
 - **Status Stage**: **`Production`**
 - **Model Aliases**: **`@production`**, **`@champion`**
-- **Silsilah Eksperimen**: Run ID `d1936a326ef64647ba1558204c4acb44` (`Run_5_GradientBoosting_Tuned_v2`)
-- **Dataset Pelatihan & Uji**: 500 hari bursa (`2024-11-13` s.d. `2026-10-13`), 495 sampel berlabel (**465 hari latih**, **30 hari uji out-of-sample**)
-- **DVC Model Pointer**: `models/model_champion.pkl.dvc` (MD5: `996a6692fa22d40537fdca463b38c6a7`, `337.225 bytes`)
-- **DVC Training Data Pointer**: `data/raw/usd_idr_raw.csv.dvc` (MD5: `a05285c9f8b3421595311897eecf5861`, `24.349 bytes`, `500 rows`)
+- **Arsitektur Model**: `DeltaForecastRegressor` (`src/models/delta_wrapper.py`) membungkus `GradientBoostingRegressor` (`loss="huber"`, `n_estimators=30`, `learning_rate=0.05`, `max_depth=2`, `subsample=0.8`, `min_samples_leaf=15`) untuk peramalan perubahan kurs harian yang stasioner dan bebas *lookahead bias*
+- **Dataset Pelatihan & Uji**: **475 hari bursa asli BI** (`2024-11-22` s.d. `2026-11-20`), 470 sampel berlabel (**440 hari latih**, **30 hari uji out-of-sample**: `2026-10-09` s.d. `2026-11-19`)
+- **DVC Training Data Pointer**: `data/raw/usd_idr_raw.csv.dvc` (MD5: `843ba914fd623a74280ecdd5513d4a27`, `23.116 bytes`, `475 rows`)
 
 ### 💡 Alasan Pemilihan Model Versi 2 sebagai Model Produksi Aktif:
-1. **Penurunan Galat Uji Sebesar 8.63% vs Versi 1 & 28.39% vs Benchmark Random Walk**: Nilai Test RMSE pada 30 hari bursa pengujian turun dari **21.30 IDR** (Versi 1) menjadi **19.46 IDR** (Versi 2), mengungguli benchmark *Naive Random Walk* (**27.18 IDR**) dan *Moving Average 7 Hari* (**129.07 IDR**), dengan MAE sebesar **16.73 IDR** dan $R^2 = 0.9914$.
-2. **Optimasi Berbasis 5-Fold Expanding Window TimeSeriesSplit CV**: Konfigurasi (`n_estimators=180`, `learning_rate=0.06`, `max_depth=3`, `subsample=0.9`) dipilih secara sistematis melalui validasi silang 5-Fold `TimeSeriesSplit` pada 465 hari bursa pelatihan (CV RMSE turun dari **70.77 IDR** ke **68.47 IDR**).
-3. **Peningkatan Directional Accuracy**: Ketepatan prediksi arah pergerakan harian kurs meningkat dari **68.97%** (Versi 1) menjadi **72.41%** (Versi 2).
-4. **Kepatuhan SLA Inferensi Real-Time**: Model dapat dimuat via alias URI dalam **129.03 ms** dengan latensi inferensi rata-rata **1.919 ms** (`p95: 2.995 ms`, jauh di bawah batas toleransi industri perbankan <50 ms).
+1. **Mengungguli Baseline Versi 1 & Naive Random Walk pada Data Historis Asli BI**: Test RMSE pada 30 hari bursa pengujian turun dari **41.06 IDR** (Versi 1) menjadi **40.22 IDR** (Versi 2), mengungguli benchmark *Naive Random Walk* (**43.24 IDR**) dan *Moving Average 7 Hari* (**83.74 IDR**), dengan Test MAE **32.65 IDR** (< Naive **34.94 IDR** < batas LK-01 **75 IDR**), Test MAPE **0.180%** (< **0.5%**), dan $R^2 = 0.8699$.
+2. **Stasioneritas & Validasi Silang 5-Fold TimeSeriesSplit**: Pembungkusan *delta forecasting* mencegah kegagalan ekstrapolasi model pohon pada tren kurs USD/IDR Rp15.927 – Rp18.360, sementara *Huber loss* menjaga ketahanan terhadap guncangan fluktuasi valas ekstrem.
+3. **Peningkatan Directional Accuracy**: Ketepatan prediksi arah pergerakan harian kurs meningkat dari **63.3%** (Versi 1) menjadi **66.7%** (Versi 2), melampaui syarat minimal LK-01 (> 60%).
 
 ### Status Siklus Hidup Versi Model:
-| Nomor Versi | Status Stage | Model Aliases | Algoritma & Parameter Kunci | 5-Fold CV RMSE | Test RMSE (30d) | DirAcc | Keterangan Operasional |
-| :---: | :---: | :---: | :--- | :---: | :---: | :---: | :--- |
-| **Versi 2** | **Production** | `@production`, `@champion` | GradientBoosting (depth=3, n_est=180, lr=0.06, sub=0.9) | **68.47 IDR** | **19.46 IDR** | **72.41%** | **Aktif melayani inferensi produksi** |
-| **Versi 1** | **Archived** | `@archived` | GradientBoosting (depth=3, n_est=100, lr=0.05, sub=0.8) | 70.77 IDR | 21.30 IDR | 68.97% | Diarsipkan resmi (superseded) |
+| Nomor Versi | Status Stage | Model Aliases | Algoritma & Parameter Kunci | 5-Fold CV RMSE | Test RMSE (30d) | Test MAE (30d) | DirAcc | Keterangan Operasional |
+| :---: | :---: | :---: | :--- | :---: | :---: | :---: | :---: | :--- |
+| **Versi 2** | **Production** | `@production`, `@champion` | DeltaGradientBoosting (`loss=huber, depth=2, n_est=30, lr=0.05, leaf=15`) | 53.57 IDR | **40.22 IDR** | **32.65 IDR** | **66.7%** | **Aktif melayani inferensi produksi** |
+| **Versi 1** | **Archived** | `@archived` | DeltaGradientBoosting (`loss=huber, depth=2, n_est=20, lr=0.03, leaf=15`) | **52.75 IDR** | 41.06 IDR | 33.33 IDR | 63.3% | Diarsipkan resmi (superseded) |
 
 ---
 
@@ -384,10 +382,10 @@ Seluruh artefak model peramalan kurs USD/IDR dikelola siklus hidupnya secara ter
 
 Setiap perubahan kode (`push` ke branch `main` atau `pull_request`) secara otomatis memicu pipeline CI/CD 4 tahap pada GitHub Actions melalui berkas konfigurasi [`.github/workflows/mlops-automation.yaml`](.github/workflows/mlops-automation.yaml):
 
-1. **Stage 1 — Automated Testing (`pytest tests/ -v`)**: Memverifikasi seluruh modul ingesti, prapemrosesan, fitur bebas kebocoran masa depan, API serving, serta aturan gerbang evaluasi.
-2. **Stage 2 — Automated Training (`train.py`)**: Menarik/menghidrasi dataset 500 hari bursa yang terlacak DVC (`data/raw/usd_idr_raw.csv.dvc`) dan melatih kandidat model dengan pelacakan MLflow.
-3. **Stage 3 — Model Evaluation & Validation (`src/evaluate_model.py`)**: Memvalidasi kandidat model terhadap seluruh ambang batas **LK-01 Subbab 5.1** (`MAE < Rp75`, `MAPE < 0,5%`, `Directional Accuracy > 60%`) dan wajib mengungguli baseline *Naive Random Walk*.
-4. **Stage 4 — Auto-Registry Update (`src/register_staging.py`)**: Apabila seluruh pemeriksaan lulus (`gate_status == PASSED`), model otomatis didaftarkan ke **MLflow Model Registry** dengan status **`Staging`** dan alias **`@staging`** disertai metadata commit Git SHA dan hash DVC.
+1. **Stage 1 — Automated Testing (`pytest tests/ -v`)**: Memverifikasi seluruh modul ingesti, prapemrosesan, fitur bebas kebocoran masa depan, API serving, serta aturan gerbang evaluasi (**19/19 lulus**).
+2. **Stage 2 — Automated Training (`train.py`)**: Menarik/menghidrasi dataset historis asli Bank Indonesia **475 hari bursa** yang terlacak DVC (`data/raw/usd_idr_raw.csv.dvc`, MD5 `843ba914fd623a74280ecdd5513d4a27`) dan melatih 4 kandidat model dengan pelacakan MLflow.
+3. **Stage 3 — Model Evaluation & Validation (`src/evaluate_model.py`)**: Memvalidasi kandidat model terhadap seluruh ambang batas **LK-01 Subbab 5.1** (`MAE < Rp75`, `MAPE < 0,5%`, `Directional Accuracy > 60%`) dan wajib mengungguli baseline *Naive Random Walk* (`MAE < 34.94 IDR`).
+4. **Stage 4 — Auto-Registry Update (`src/register_staging.py`)**: Apabila seluruh pemeriksaan lulus (`gate_status == PASSED`), model otomatis didaftarkan ke **MLflow Model Registry** dengan status **`Staging`** dan alias **`@staging`** disertai metadata commit Git SHA dan hash DVC. Run terverifikasi pada commit simulasi hyperparameter `7a90ed9`: [GitHub Actions Run #45017403016](https://github.com/TOBIANDA/MLOps-USD-IDR-Exchange-Rate-Prediction/actions/runs/45017403016) (**Success**, 4m 57s).
 
 ---
 
@@ -410,20 +408,20 @@ Sistem inferensi produksi dan MLflow Tracking Server telah dikontainerisasi dan 
    ```bash
    docker compose ps
    ```
-3. *(Opsional, saat inisiasi volume pertama kali)* **Daftarkan Model Registry Version 1 & Version 2 ke server MLflow terkontainerisasi dan muat ulang API**:
+3. *(Saat inisiasi volume pertama kali)* **Daftarkan Model Registry Version 1 & Version 2 ke server MLflow terkontainerisasi dan muat ulang API**:
    ```bash
    docker compose exec api-service python src/bootstrap_docker_registry.py
    curl -X POST http://localhost:8000/model/reload
    ```
 4. **Verifikasi komunikasi antar-kontainer & endpoint layanan**:
    ```bash
-   # Cek health & koneksi DNS internal http://mlflow-server:5000
+   # Cek health & koneksi DNS internal http://mlflow-server:5000 (475 baris data BI s.d. 2026-11-20)
    curl http://localhost:8000/health
 
    # Cek metadata Model Registry langsung dari mlflow-server via api-service
    curl http://localhost:8000/model/registry
 
-   # Uji inferensi prediksi H+1 USD/IDR dari model Production di MLflow Registry
+   # Uji inferensi prediksi H+1 USD/IDR dari model Production di MLflow Registry (mis. Rp18.368,61)
    curl http://localhost:8000/predict/h1
    ```
    - **MLflow Tracking & Model Registry UI**: `http://localhost:5000`
