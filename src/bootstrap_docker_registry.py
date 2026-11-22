@@ -129,8 +129,8 @@ def bootstrap_registry() -> Dict[str, Any]:
     registered_versions = []
     for cfg in candidates:
         model = GradientBoostingRegressor(**cfg["params"])
-        metrics = _compute_metrics(model, X_train, y_train, X_test, y_test, y_base)
         model.fit(X_train, y_train)
+        metrics = _compute_metrics(model, X_train, y_train, X_test, y_test, y_base)
         y_train_pred = model.predict(X_train)
         signature = infer_signature(X_train, y_train_pred)
 

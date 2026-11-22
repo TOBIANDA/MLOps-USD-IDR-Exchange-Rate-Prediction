@@ -285,14 +285,14 @@ def run_experiment_pipeline(
             "run_name": "Run_4_GradientBoosting_Champion",
             "model_family": "GradientBoosting",
             "model": GradientBoostingRegressor(
-                n_estimators=100, learning_rate=0.05, max_depth=3, subsample=0.8, random_state=42
+                n_estimators=180, learning_rate=0.06, max_depth=3, subsample=0.9, random_state=42
             ),
             "params": {
                 "model_type": "GradientBoostingRegressor",
-                "n_estimators": 100,
-                "learning_rate": 0.05,
+                "n_estimators": 180,
+                "learning_rate": 0.06,
                 "max_depth": 3,
-                "subsample": 0.8,
+                "subsample": 0.9,
                 "train_samples": len(X_train),
                 "test_samples": len(X_test),
                 "features_count": len(feature_cols),
