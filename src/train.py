@@ -298,8 +298,8 @@ def run_experiment_pipeline(
             "model_family": "GradientBoosting",
             "model": DeltaForecastRegressor(
                 GradientBoostingRegressor(
-                    n_estimators=20,
-                    learning_rate=0.03,
+                    n_estimators=30,
+                    learning_rate=0.05,
                     max_depth=2,
                     subsample=0.8,
                     min_samples_leaf=15,
@@ -309,8 +309,8 @@ def run_experiment_pipeline(
             ),
             "params": {
                 "model_type": "DeltaGradientBoostingRegressor",
-                "n_estimators": 20,
-                "learning_rate": 0.03,
+                "n_estimators": 30,
+                "learning_rate": 0.05,
                 "max_depth": 2,
                 "subsample": 0.8,
                 "min_samples_leaf": 15,

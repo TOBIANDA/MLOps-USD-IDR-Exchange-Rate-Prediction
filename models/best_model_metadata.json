@@ -1,22 +1,22 @@
 {
-  "run_id": "8adefa270efc471bb3ce4a58b32871da",
+  "run_id": "8516ce04cf9b43d7ab7dc12f17719f47",
   "run_name": "Run_4_GradientBoosting_Champion",
   "model_type": "DeltaGradientBoostingRegressor",
   "dvc_hash": "843ba914fd623a74280ecdd5513d4a27",
   "data_version": "v3.0-bi-real-475d",
   "metrics": {
-    "MAE": 33.33,
-    "RMSE": 41.06,
-    "MAPE_pct": 0.183,
-    "R2_Score": 0.8644,
-    "Directional_Accuracy_pct": 63.3,
-    "Train_RMSE": 52.96,
-    "CV_5Fold_RMSE": 52.75
+    "MAE": 32.65,
+    "RMSE": 40.22,
+    "MAPE_pct": 0.18,
+    "R2_Score": 0.8699,
+    "Directional_Accuracy_pct": 66.7,
+    "Train_RMSE": 51.74,
+    "CV_5Fold_RMSE": 53.57
   },
   "params": {
     "model_type": "DeltaGradientBoostingRegressor",
-    "n_estimators": 20,
-    "learning_rate": 0.03,
+    "n_estimators": 30,
+    "learning_rate": 0.05,
     "max_depth": 2,
     "subsample": 0.8,
     "min_samples_leaf": 15,
