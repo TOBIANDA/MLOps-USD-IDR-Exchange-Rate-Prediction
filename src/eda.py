@@ -1,6 +1,6 @@
 """
 Comprehensive Exploratory Data Analysis (EDA) Module for USD/IDR Exchange Rate Forecasting.
-Analyzes the 500-business-day historical sliding window (~2 years, 2024-10-23 to 2026-10-13):
+Analyzes the genuine Bank Indonesia historical sliding window:
   1. Data Quality, Schema Completeness, and Summary Descriptive Statistics
   2. Multi-Year Price Trajectory (Kurs Jual, Kurs Beli, Kurs Tengah) & Moving Averages (MA-7, MA-14, MA-30)
   3. Daily Return Distribution, Skewness, Kurtosis, & Rolling Volatility Regimes
@@ -13,6 +13,8 @@ import sqlite3
 from pathlib import Path
 from typing import Dict, Any
 
+import matplotlib
+matplotlib.use("Agg")
 import matplotlib.pyplot as plt
 import numpy as np
 import pandas as pd
@@ -75,12 +77,16 @@ def run_comprehensive_eda(test_size: int = 30) -> Dict[str, Any]:
     # 3. Generate High-Resolution 4-Panel EDA Dashboard
     fig, axes = plt.subplots(2, 2, figsize=(14, 9), dpi=160)
 
-    # Panel 1: 500-Day Price Trajectory & Moving Averages
+    date_start_str = str(df["tgl"].min())
+    date_end_str = str(df["tgl"].max())
+    n_days = len(df)
+
+    # Panel 1: Historical Price Trajectory & Moving Averages
     ax1 = axes[0, 0]
     ax1.plot(df["tgl_dt"], df["jual"], color="#1E293B", lw=1.6, label="Kurs Jual BI (Ask)")
     ax1.plot(df["tgl_dt"], df["beli"], color="#64748B", lw=1.1, alpha=0.8, label="Kurs Beli BI (Bid)")
     ax1.plot(df["tgl_dt"], df["ma_30"], color="#2563EB", lw=1.8, linestyle="--", label="Moving Average 30D")
-    ax1.set_title("A. Trajektori Historis Kurs USD/IDR (500 Hari Bursa: Okt 2024 - Okt 2026)", fontsize=10.5, fontweight="bold")
+    ax1.set_title(f"A. Trajektori Historis Kurs USD/IDR ({n_days} Hari Bursa: {date_start_str} s.d. {date_end_str})", fontsize=10, fontweight="bold")
     ax1.set_ylabel("Nilai Kurs (IDR / USD)")
     ax1.grid(True, linestyle=":", alpha=0.6)
     ax1.legend(loc="upper left", fontsize=8.5)
@@ -164,7 +170,7 @@ def run_comprehensive_eda(test_size: int = 30) -> Dict[str, Any]:
         json.dump(summary, f, indent=2)
 
     print("=" * 72)
-    print("COMPREHENSIVE EDA SUMMARY (500 BUSINESS DAYS: 2024-10-23 to 2026-10-13)")
+    print(f"COMPREHENSIVE EDA SUMMARY ({n_days} BUSINESS DAYS: {date_start_str} to {date_end_str})")
     print("=" * 72)
     print(f"Total Observations      : {summary['dataset_total_rows']} business days (Zero Missing Values)")
     print(f"Kurs Jual Range         : Rp{summary['descriptive_stats']['jual_min']:,.2f} - Rp{summary['descriptive_stats']['jual_max']:,.2f} (Mean: Rp{summary['descriptive_stats']['jual_mean']:,.2f})")

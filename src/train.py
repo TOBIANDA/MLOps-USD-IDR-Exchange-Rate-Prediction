@@ -1,13 +1,14 @@
 """
 Machine Learning Model Training & Experiment Tracking with MLflow
 Task: USD/IDR Foreign Exchange Rate Forecasting (Regression)
-Dataset: 500 Business Days (2024-11-13 to 2026-10-13)
+Dataset: Genuine Bank Indonesia Historical Series (Kurs Transaksi BI)
 """
 
 import argparse
 import json
 import logging
 import os
+import sys
 from pathlib import Path
 from typing import Any, Dict, List, Tuple
 
@@ -16,6 +17,7 @@ matplotlib.use("Agg")
 import matplotlib.pyplot as plt
 import numpy as np
 import pandas as pd
+from sklearn.base import clone
 from sklearn.ensemble import GradientBoostingRegressor, RandomForestRegressor
 from sklearn.linear_model import Ridge
 from sklearn.metrics import mean_absolute_error, mean_squared_error, r2_score
@@ -30,6 +32,11 @@ logger = logging.getLogger("train_mlflow")
 os.environ["MLFLOW_DISABLE_AGENT_HINT"] = "1"
 
 PROJECT_ROOT = Path(__file__).resolve().parent.parent
+if str(PROJECT_ROOT) not in sys.path:
+    sys.path.insert(0, str(PROJECT_ROOT))
+
+from src.models.delta_wrapper import DeltaForecastRegressor
+
 DEFAULT_RAW_DATA = PROJECT_ROOT / "data" / "raw" / "usd_idr_raw.csv"
 DEFAULT_DVC_FILE = PROJECT_ROOT / "data" / "raw" / "usd_idr_raw.csv.dvc"
 DEFAULT_DB_PATH = PROJECT_ROOT / "data" / "exchange_rates.db"
@@ -208,7 +215,7 @@ def run_experiment_pipeline(
     register_best: bool = True,
 ) -> Dict[str, Any]:
     """
-    Execute full multi-model experiment pipeline tracked by MLflow on the 500-day dataset.
+    Execute full multi-model experiment pipeline tracked by MLflow on the genuine Bank Indonesia dataset.
     """
     import mlflow
     import mlflow.sklearn
@@ -221,12 +228,13 @@ def run_experiment_pipeline(
 
     raw_df = load_dataset(data_path)
     dvc_hash = get_dvc_hash()
-    logger.info("Dataset loaded: %d rows. DVC md5 hash: %s", len(raw_df), dvc_hash)
+    data_version_tag = f"v3.0-bi-real-{len(raw_df)}d"
+    logger.info("Dataset loaded: %d rows (%s). DVC md5 hash: %s", len(raw_df), data_version_tag, dvc_hash)
 
     featured_df, feature_cols = build_features(raw_df)
     logger.info("Engineered %d labeled samples with features: %s", len(featured_df), feature_cols)
 
-    # Strict Chronological Split: 465 Train Days, 30 Test Days
+    # Strict Chronological Split
     train_df = featured_df.iloc[:-test_size].copy()
     test_df = featured_df.iloc[-test_size:].copy()
 
@@ -243,10 +251,10 @@ def run_experiment_pipeline(
         {
             "run_name": "Run_1_Ridge_L2_Regularization",
             "model_family": "Ridge",
-            "model": Ridge(alpha=500000.0, solver="auto", random_state=42),
+            "model": DeltaForecastRegressor(Ridge(alpha=500.0, solver="auto", random_state=42), use_scaler=True),
             "params": {
-                "model_type": "RidgeRegression",
-                "alpha": 500000.0,
+                "model_type": "DeltaRidgeRegression",
+                "alpha": 500.0,
                 "solver": "auto",
                 "train_samples": len(X_train),
                 "test_samples": len(X_test),
@@ -256,12 +264,14 @@ def run_experiment_pipeline(
         {
             "run_name": "Run_2_RandomForest_Deep_Trees",
             "model_family": "RandomForest",
-            "model": RandomForestRegressor(n_estimators=100, max_depth=6, min_samples_split=2, random_state=42),
+            "model": DeltaForecastRegressor(
+                RandomForestRegressor(n_estimators=100, max_depth=3, min_samples_leaf=15, random_state=42)
+            ),
             "params": {
-                "model_type": "RandomForestRegressor",
+                "model_type": "DeltaRandomForestRegressor",
                 "n_estimators": 100,
-                "max_depth": 6,
-                "min_samples_split": 2,
+                "max_depth": 3,
+                "min_samples_leaf": 15,
                 "train_samples": len(X_train),
                 "test_samples": len(X_test),
                 "features_count": len(feature_cols),
@@ -270,12 +280,14 @@ def run_experiment_pipeline(
         {
             "run_name": "Run_3_RandomForest_Tuned_Regularized",
             "model_family": "RandomForest",
-            "model": RandomForestRegressor(n_estimators=150, max_depth=5, min_samples_split=4, random_state=42),
+            "model": DeltaForecastRegressor(
+                RandomForestRegressor(n_estimators=150, max_depth=2, min_samples_leaf=20, random_state=42)
+            ),
             "params": {
-                "model_type": "RandomForestRegressor",
+                "model_type": "DeltaRandomForestRegressor",
                 "n_estimators": 150,
-                "max_depth": 5,
-                "min_samples_split": 4,
+                "max_depth": 2,
+                "min_samples_leaf": 20,
                 "train_samples": len(X_train),
                 "test_samples": len(X_test),
                 "features_count": len(feature_cols),
@@ -284,15 +296,25 @@ def run_experiment_pipeline(
         {
             "run_name": "Run_4_GradientBoosting_Champion",
             "model_family": "GradientBoosting",
-            "model": GradientBoostingRegressor(
-                n_estimators=180, learning_rate=0.06, max_depth=3, subsample=0.9, random_state=42
+            "model": DeltaForecastRegressor(
+                GradientBoostingRegressor(
+                    n_estimators=20,
+                    learning_rate=0.03,
+                    max_depth=2,
+                    subsample=0.8,
+                    min_samples_leaf=15,
+                    loss="huber",
+                    random_state=42,
+                )
             ),
             "params": {
-                "model_type": "GradientBoostingRegressor",
-                "n_estimators": 180,
-                "learning_rate": 0.06,
-                "max_depth": 3,
-                "subsample": 0.9,
+                "model_type": "DeltaGradientBoostingRegressor",
+                "n_estimators": 20,
+                "learning_rate": 0.03,
+                "max_depth": 2,
+                "subsample": 0.8,
+                "min_samples_leaf": 15,
+                "loss": "huber",
                 "train_samples": len(X_train),
                 "test_samples": len(X_test),
                 "features_count": len(feature_cols),
@@ -321,8 +343,9 @@ def run_experiment_pipeline(
             # 5-Fold Expanding Window TimeSeriesSplit CV on X_train
             cv_rmses = []
             for tr_idx, val_idx in tscv.split(X_train):
-                model.fit(X_train.iloc[tr_idx], y_train[tr_idx])
-                val_pred = model.predict(X_train.iloc[val_idx])
+                cv_model = clone(model)
+                cv_model.fit(X_train.iloc[tr_idx], y_train[tr_idx])
+                val_pred = cv_model.predict(X_train.iloc[val_idx])
                 cv_rmses.append(float(np.sqrt(mean_squared_error(y_train[val_idx], val_pred))))
             cv_rmse_mean = round(float(np.mean(cv_rmses)), 2)
 
@@ -337,7 +360,7 @@ def run_experiment_pipeline(
 
             mlflow.set_tag("data.source", str(data_path.name))
             mlflow.set_tag("data.dvc_hash", dvc_hash)
-            mlflow.set_tag("data.version", "v2.0-dataset-500d")
+            mlflow.set_tag("data.version", data_version_tag)
             mlflow.set_tag("task", "USD_IDR_Exchange_Rate_Regression")
             mlflow.set_tag("author", "Tobias Andra Valentino")
             mlflow.set_tag("mlflow.runName", run_name)
@@ -366,7 +389,7 @@ def run_experiment_pipeline(
                 "run_name": run_name,
                 "model_type": params["model_type"],
                 "dvc_hash": dvc_hash,
-                "data_version": "v2.0-dataset-500d",
+                "data_version": data_version_tag,
                 "metrics": metrics,
                 "params": params,
             }

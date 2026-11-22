@@ -119,7 +119,7 @@ def evaluate_against_thresholds(
     gate_status = "PASSED" if all_passed else "FAILED"
 
     dvc_hash = best_meta.get("dvc_hash") or get_dvc_hash()
-    data_version = best_meta.get("data_version", "v2.0-dataset-500d")
+    data_version = best_meta.get("data_version", "v3.0-bi-real")
 
     report = {
         "gate_status": gate_status,

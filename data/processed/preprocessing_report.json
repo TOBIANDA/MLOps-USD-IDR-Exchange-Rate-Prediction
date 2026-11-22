@@ -1,9 +1,9 @@
 {
-  "execution_timestamp": "2026-11-02T23:30:44.824784",
+  "execution_timestamp": "2026-11-22T17:49:05.044750",
   "output_file": "data\\processed\\usd_idr_cleaned.csv",
   "statistics": {
-    "initial_rows": 500,
-    "final_clean_rows": 500,
+    "initial_rows": 475,
+    "final_clean_rows": 475,
     "dropped_null_rows": 0,
     "dropped_duplicate_rows": 0,
     "dropped_invalid_financial_rows": 0,
@@ -13,15 +13,15 @@
       "jual": 0
     },
     "date_range": {
-      "start": "2024-11-13",
-      "end": "2026-10-13"
+      "start": "2024-11-22",
+      "end": "2026-11-20"
     },
     "summary_metrics": {
-      "min_tengah": 17562.0,
-      "max_tengah": 19078.0,
-      "mean_tengah": 18321.454,
-      "mean_spread": 183.21238,
-      "daily_return_volatility_pct": 0.14103543108690325
+      "min_tengah": 15848.0,
+      "max_tengah": 18269.0,
+      "mean_tengah": 16931.757894736842,
+      "mean_spread": 169.3174105263158,
+      "daily_return_volatility_pct": 0.3137133606719921
     },
     "validation_status": "PASSED"
   }

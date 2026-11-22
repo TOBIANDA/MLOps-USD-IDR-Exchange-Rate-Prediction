@@ -12,6 +12,7 @@ import json
 import logging
 import sqlite3
 import sys
+import time
 import xml.etree.ElementTree as ET
 from pathlib import Path
 from typing import Dict, List, Optional, Tuple, Union
@@ -82,65 +83,50 @@ class IngestionWorker:
         finally:
             conn.close()
 
-    def fetch_dynamic_rates(
-        self,
-        days: int = 500,
-        currency: str = "USD",
-        start_date: Optional[datetime.date] = None,
-        end_date: Optional[datetime.date] = None,
-    ) -> pd.DataFrame:
-        """
-        Fetch dynamic exchange rate data from Bank Indonesia SOAP/XML endpoint.
-        Returns a raw pandas DataFrame.
-        """
-        if end_date is None:
-            end_date = datetime.date.today()
-        if start_date is None:
-            start_date = end_date - datetime.timedelta(days=days)
-
-        url = f"{self.api_url}?mts={currency}&startdate={start_date}&enddate={end_date}"
-        logger.info("Connecting to Bank Indonesia API: %s to %s", start_date, end_date)
-        logger.info("Endpoint: %s", url)
-
-        session = requests.Session()
-        session.headers.update(REQUEST_HEADERS)
-
+    def reset_database(self) -> None:
+        """Clear existing records from SQLite table prior to a fresh historical load."""
+        self.init_database()
+        conn = sqlite3.connect(self.db_path)
         try:
-            resp = session.get(url, timeout=self.timeout)
-            resp.raise_for_status()
-        except requests.RequestException as exc:
-            logger.error("Failed to connect to Bank Indonesia API: %s", exc)
-            # Attempt fallback from local database cache if available
-            if self.db_path.exists():
-                logger.warning("Attempting fallback from local database cache (%s)...", self.db_path)
-                return self.load_from_db_cache(days=days)
-            raise
+            conn.execute("DELETE FROM exchange_rates")
+            conn.commit()
+        finally:
+            conn.close()
+        logger.info("Cleared existing rows in %s.", self.db_path.name)
 
-        root = ET.fromstring(resp.content)
+    def _parse_bi_xml(self, content: bytes, currency: str) -> pd.DataFrame:
+        """Parse Bank Indonesia XML DataSet payload into standardized rate records."""
+        root = ET.fromstring(content)
         records: List[Dict[str, Optional[str]]] = []
         for elem in root.iter():
             if elem.tag.endswith("Table"):
-                row = {}
+                row: Dict[str, Optional[str]] = {}
                 for child in elem:
                     tag = child.tag.split("}")[-1] if "}" in child.tag else child.tag
                     row[tag] = child.text
                 records.append(row)
 
         if not records:
-            logger.warning("No records returned from Bank Indonesia for range %s - %s", start_date, end_date)
             return pd.DataFrame()
 
         df = pd.DataFrame(records)
+        if "tgl_subkurslokal" not in df.columns or "beli_subkurslokal" not in df.columns or "jual_subkurslokal" not in df.columns:
+            return pd.DataFrame()
 
-        # Standardize raw column structure
-        df["tgl"] = pd.to_datetime(df["tgl_subkurslokal"]).dt.strftime("%Y-%m-%d")
-        df["beli"] = pd.to_numeric(df["beli_subkurslokal"].str.replace(",", ""), errors="coerce")
-        df["jual"] = pd.to_numeric(df["jual_subkurslokal"].str.replace(",", ""), errors="coerce")
+        df["tgl"] = pd.to_datetime(df["tgl_subkurslokal"], errors="coerce").dt.strftime("%Y-%m-%d")
+        df["beli"] = pd.to_numeric(df["beli_subkurslokal"].astype(str).str.replace(",", ""), errors="coerce")
+        df["jual"] = pd.to_numeric(df["jual_subkurslokal"].astype(str).str.replace(",", ""), errors="coerce")
+        df = df.dropna(subset=["tgl", "beli", "jual"]).copy()
+        df = df[(df["beli"] > 0) & (df["jual"] > 0) & (df["beli"] <= df["jual"])].copy()
+
         df["tengah"] = ((df["beli"] + df["jual"]) / 2.0).round(2)
         df["spread"] = (df["jual"] - df["beli"]).round(2)
-        df["mata_uang"] = df.get("mts_subkurslokal", currency)
+        if "mts_subkurslokal" in df.columns:
+            df["mata_uang"] = df["mts_subkurslokal"].astype(str).str.strip()
+        else:
+            df["mata_uang"] = currency
 
-        raw_df = (
+        return (
             df[["tgl", "beli", "jual", "tengah", "spread", "mata_uang"]]
             .dropna()
             .drop_duplicates(subset=["tgl"])
@@ -148,7 +134,76 @@ class IngestionWorker:
             .reset_index(drop=True)
         )
 
-        logger.info("Fetched %d exchange rate records from Bank Indonesia.", len(raw_df))
+    def fetch_dynamic_rates(
+        self,
+        days: int = 730,
+        currency: str = "USD",
+        start_date: Optional[datetime.date] = None,
+        end_date: Optional[datetime.date] = None,
+        chunk_days: int = 120,
+        allow_db_fallback: bool = True,
+    ) -> pd.DataFrame:
+        """
+        Fetch dynamic exchange rate data from Bank Indonesia SOAP/XML endpoint.
+        Automatically chunks multi-month/multi-year windows into `chunk_days` spans.
+        Returns a raw chronologically sorted pandas DataFrame.
+        """
+        if end_date is None:
+            end_date = datetime.date.today()
+        if start_date is None:
+            start_date = end_date - datetime.timedelta(days=days)
+
+        chunks: List[Tuple[datetime.date, datetime.date]] = []
+        cur_start = start_date
+        while cur_start <= end_date:
+            cur_end = min(cur_start + datetime.timedelta(days=chunk_days - 1), end_date)
+            chunks.append((cur_start, cur_end))
+            cur_start = cur_end + datetime.timedelta(days=1)
+
+        session = requests.Session()
+        session.headers.update(REQUEST_HEADERS)
+
+        chunk_frames: List[pd.DataFrame] = []
+        try:
+            for idx, (c_start, c_end) in enumerate(chunks):
+                if idx > 0:
+                    time.sleep(0.8)
+                url = f"{self.api_url}?mts={currency}&startdate={c_start}&enddate={c_end}"
+                logger.info(
+                    "Fetching BI chunk %d/%d: %s to %s (%s)",
+                    idx + 1,
+                    len(chunks),
+                    c_start,
+                    c_end,
+                    url,
+                )
+                resp = session.get(url, timeout=self.timeout)
+                logger.info("Chunk %d/%d HTTP status: %s (%d bytes)", idx + 1, len(chunks), resp.status_code, len(resp.content))
+                resp.raise_for_status()
+
+                chunk_df = self._parse_bi_xml(resp.content, currency=currency)
+                logger.info("Chunk %d/%d parsed %d valid business-day rows.", idx + 1, len(chunks), len(chunk_df))
+                if not chunk_df.empty:
+                    chunk_frames.append(chunk_df)
+        except (requests.RequestException, ET.ParseError) as exc:
+            logger.error("Failed to fetch from Bank Indonesia API: %s", exc)
+            if allow_db_fallback and self.db_path.exists():
+                logger.warning("Attempting fallback from local database cache (%s)...", self.db_path)
+                return self.load_from_db_cache(days=days)
+            raise
+
+        if not chunk_frames:
+            logger.warning("No records returned from Bank Indonesia for range %s - %s", start_date, end_date)
+            return pd.DataFrame()
+
+        raw_df = (
+            pd.concat(chunk_frames, ignore_index=True)
+            .drop_duplicates(subset=["tgl"], keep="last")
+            .sort_values("tgl", ascending=True)
+            .reset_index(drop=True)
+        )
+
+        logger.info("Fetched %d total unique exchange rate records from Bank Indonesia.", len(raw_df))
         return raw_df
 
     def sync_to_sqlite(self, df: pd.DataFrame) -> int:
@@ -180,8 +235,8 @@ class IngestionWorker:
         logger.info("Synchronized to SQLite: %d new rows inserted into %s.", inserted, self.db_path.name)
         return inserted
 
-    def load_from_db_cache(self, days: int = 500) -> pd.DataFrame:
-        """Fallback query from SQLite cache."""
+    def load_from_db_cache(self, days: Optional[int] = None) -> pd.DataFrame:
+        """Query records from SQLite cache (returns all rows when days is None)."""
         self.init_database()
         conn = sqlite3.connect(self.db_path)
         try:
@@ -191,7 +246,7 @@ class IngestionWorker:
             )
         finally:
             conn.close()
-        if not df.empty and days:
+        if not df.empty and days is not None and days > 0:
             df = df.tail(days).reset_index(drop=True)
         return df
 
@@ -271,23 +326,30 @@ class IngestionWorker:
 
     def run(
         self,
-        days: int = 500,
+        days: int = 730,
         currency: str = "USD",
         export_formats: Optional[List[str]] = None,
         sync_db: bool = True,
         use_timestamp: bool = True,
+        reset_db: bool = False,
     ) -> Tuple[pd.DataFrame, Dict[str, Path]]:
         """
         Execute full end-to-end ingestion workflow.
         """
-        raw_df = self.fetch_dynamic_rates(days=days, currency=currency)
+        raw_df = self.fetch_dynamic_rates(
+            days=days,
+            currency=currency,
+            allow_db_fallback=not reset_db,
+        )
         if raw_df.empty:
             logger.warning("Empty dataset received from ingestion. No file written.")
             return raw_df, {}
 
         if sync_db:
+            if reset_db:
+                self.reset_database()
             self.sync_to_sqlite(raw_df)
-            raw_df = self.load_from_db_cache(days=days)
+            raw_df = self.load_from_db_cache()
 
         saved_files = self.save_raw_dataset(
             df=raw_df,
@@ -300,7 +362,7 @@ class IngestionWorker:
 
 
 def ingest_usd_idr_rates(
-    days: int = 500,
+    days: int = 730,
     output_dir: Union[str, Path] = DEFAULT_RAW_DIR,
     export_formats: Optional[List[str]] = None,
 ) -> Tuple[pd.DataFrame, Dict[str, Path]]:
@@ -316,8 +378,8 @@ def parse_args():
     parser.add_argument(
         "--days",
         type=int,
-        default=500,
-        help="Number of historical business days to fetch (default: 500)",
+        default=730,
+        help="Calendar days lookback window to fetch in chunks (default: 730)",
     )
     parser.add_argument(
         "--currency",
@@ -348,6 +410,11 @@ def parse_args():
         help="Skip syncing ingested records to local SQLite database",
     )
     parser.add_argument(
+        "--reset-db",
+        action="store_true",
+        help="Clear existing SQLite exchange_rates rows before inserting freshly fetched data",
+    )
+    parser.add_argument(
         "--plot",
         action="store_true",
         help="Generate visual analysis dashboard after ingestion",
@@ -371,6 +438,7 @@ if __name__ == "__main__":
         export_formats=formats,
         sync_db=not args.no_db_sync,
         use_timestamp=not args.no_timestamp,
+        reset_db=args.reset_db,
     )
 
     plot_path = None

@@ -1,29 +1,28 @@
 {
-  "run_id": "b83ed05fa3c44818bcba410579db198b",
+  "run_id": "8adefa270efc471bb3ce4a58b32871da",
   "run_name": "Run_4_GradientBoosting_Champion",
-  "model_type": "GradientBoostingRegressor",
+  "model_type": "DeltaGradientBoostingRegressor",
+  "dvc_hash": "843ba914fd623a74280ecdd5513d4a27",
+  "data_version": "v3.0-bi-real-475d",
   "metrics": {
-    "MAE": 17.82,
-    "RMSE": 21.3,
-    "MAPE_pct": 0.097,
-    "R2_Score": 0.9897,
-    "Directional_Accuracy_pct": 69.0,
-    "Train_RMSE": 14.53,
-    "CV_5Fold_RMSE": 70.77
+    "MAE": 33.33,
+    "RMSE": 41.06,
+    "MAPE_pct": 0.183,
+    "R2_Score": 0.8644,
+    "Directional_Accuracy_pct": 63.3,
+    "Train_RMSE": 52.96,
+    "CV_5Fold_RMSE": 52.75
   },
   "params": {
-    "model_type": "GradientBoostingRegressor",
-    "n_estimators": 100,
-    "learning_rate": 0.05,
-    "max_depth": 3,
+    "model_type": "DeltaGradientBoostingRegressor",
+    "n_estimators": 20,
+    "learning_rate": 0.03,
+    "max_depth": 2,
     "subsample": 0.8,
-    "train_samples": 465,
+    "min_samples_leaf": 15,
+    "loss": "huber",
+    "train_samples": 440,
     "test_samples": 30,
     "features_count": 9
-  },
-  "registered_model": {
-    "name": "USD_IDR_Exchange_Rate_Regressor",
-    "version": 1,
-    "model_uri": "runs:/b83ed05fa3c44818bcba410579db198b/model"
   }
 }

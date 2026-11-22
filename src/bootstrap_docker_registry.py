@@ -19,6 +19,7 @@ import mlflow.sklearn
 from mlflow.models.signature import infer_signature
 from mlflow.tracking import MlflowClient
 import numpy as np
+from sklearn.base import clone
 from sklearn.ensemble import GradientBoostingRegressor
 from sklearn.metrics import mean_absolute_error, mean_squared_error, r2_score
 from sklearn.model_selection import TimeSeriesSplit
@@ -27,6 +28,7 @@ PROJECT_ROOT = Path(__file__).resolve().parent.parent
 if str(PROJECT_ROOT) not in sys.path:
     sys.path.insert(0, str(PROJECT_ROOT))
 
+from src.models.delta_wrapper import DeltaForecastRegressor
 from src.train import build_features, get_dvc_hash, load_dataset
 
 logging.basicConfig(
@@ -43,7 +45,7 @@ MODEL_NAME = os.getenv("MODEL_NAME", "USD_IDR_Exchange_Rate_Regressor")
 DATA_PATH = PROJECT_ROOT / "data" / "raw" / "usd_idr_raw.csv"
 
 
-def _compute_metrics(model: GradientBoostingRegressor, X_train, y_train, X_test, y_test, y_base) -> Dict[str, float]:
+def _compute_metrics(model: DeltaForecastRegressor, X_train, y_train, X_test, y_test, y_base) -> Dict[str, float]:
     y_pred = model.predict(X_test)
     y_train_pred = model.predict(X_train)
     mae = float(mean_absolute_error(y_test, y_pred))
@@ -59,7 +61,7 @@ def _compute_metrics(model: GradientBoostingRegressor, X_train, y_train, X_test,
     tscv = TimeSeriesSplit(n_splits=5)
     cv_rmses = []
     for tr_idx, val_idx in tscv.split(X_train):
-        m_cv = GradientBoostingRegressor(**model.get_params())
+        m_cv = clone(model)
         m_cv.fit(X_train.iloc[tr_idx], y_train[tr_idx])
         p_val = m_cv.predict(X_train.iloc[val_idx])
         cv_rmses.append(float(np.sqrt(mean_squared_error(y_train[val_idx], p_val))))
@@ -97,6 +99,7 @@ def bootstrap_registry() -> Dict[str, Any]:
 
     raw_df = load_dataset(DATA_PATH, use_db_fallback=True)
     dvc_hash = get_dvc_hash()
+    data_version_tag = f"v3.0-bi-real-{len(raw_df)}d"
     featured_df, feature_cols = build_features(raw_df)
 
     test_size = 30
@@ -112,23 +115,39 @@ def bootstrap_registry() -> Dict[str, Any]:
     candidates = [
         {
             "run_name": "Run_4_GradientBoosting_Champion",
-            "params": {"n_estimators": 100, "learning_rate": 0.05, "max_depth": 3, "subsample": 0.8, "random_state": 42},
+            "params": {
+                "n_estimators": 20,
+                "learning_rate": 0.03,
+                "max_depth": 2,
+                "subsample": 0.8,
+                "min_samples_leaf": 15,
+                "loss": "huber",
+                "random_state": 42,
+            },
             "target_stage": "Archived",
             "alias": "archived",
-            "desc": "Version 1 Baseline GradientBoosting (100 trees, lr=0.05, depth=3). Superseded by tuned Version 2.",
+            "desc": "Version 1 Baseline Delta GradientBoosting (20 trees, lr=0.03, depth=2, loss=huber) on genuine Bank Indonesia data. Superseded by tuned Version 2.",
         },
         {
             "run_name": "Run_5_GradientBoosting_Tuned_v2",
-            "params": {"n_estimators": 180, "learning_rate": 0.06, "max_depth": 3, "subsample": 0.9, "random_state": 42},
+            "params": {
+                "n_estimators": 30,
+                "learning_rate": 0.05,
+                "max_depth": 2,
+                "subsample": 0.8,
+                "min_samples_leaf": 15,
+                "loss": "huber",
+                "random_state": 42,
+            },
             "target_stage": "Production",
             "alias": "production",
-            "desc": "Version 2 Tuned 5-Fold TimeSeriesSplit CV Champion GradientBoosting (180 trees, lr=0.06, depth=3, subsample=0.9).",
+            "desc": "Version 2 Tuned Champion Delta GradientBoosting (30 trees, lr=0.05, depth=2, loss=huber) trained on genuine Bank Indonesia USD/IDR rates.",
         },
     ]
 
     registered_versions = []
     for cfg in candidates:
-        model = GradientBoostingRegressor(**cfg["params"])
+        model = DeltaForecastRegressor(GradientBoostingRegressor(**cfg["params"]))
         model.fit(X_train, y_train)
         metrics = _compute_metrics(model, X_train, y_train, X_test, y_test, y_base)
         y_train_pred = model.predict(X_train)
@@ -136,10 +155,10 @@ def bootstrap_registry() -> Dict[str, Any]:
 
         with mlflow.start_run(run_name=cfg["run_name"]) as run:
             mlflow.set_tag("data.dvc_hash", dvc_hash)
-            mlflow.set_tag("data.version", "v2.0-dataset-500d")
+            mlflow.set_tag("data.version", data_version_tag)
             mlflow.set_tag("runtime", "docker-compose-orchestrated")
             mlflow.log_params({
-                "model_type": "GradientBoostingRegressor",
+                "model_type": "DeltaGradientBoostingRegressor",
                 "train_samples": len(X_train),
                 "test_samples": len(X_test),
                 "features_count": len(feature_cols),

@@ -1,99 +1,104 @@
 [
   {
-    "run_id": "c030e74d9fed4fc89d7b159ccb4ea10a",
+    "run_id": "2e29942a350c48a7a065372c54055ecf",
     "run_name": "Run_1_Ridge_L2_Regularization",
-    "model_type": "RidgeRegression",
+    "model_type": "DeltaRidgeRegression",
+    "dvc_hash": "843ba914fd623a74280ecdd5513d4a27",
+    "data_version": "v3.0-bi-real-475d",
     "metrics": {
-      "MAE": 19.65,
-      "RMSE": 22.82,
-      "MAPE_pct": 0.107,
-      "R2_Score": 0.9882,
-      "Directional_Accuracy_pct": 75.9,
-      "Train_RMSE": 22.36,
-      "CV_5Fold_RMSE": 35.29
+      "MAE": 34.18,
+      "RMSE": 41.72,
+      "MAPE_pct": 0.188,
+      "R2_Score": 0.86,
+      "Directional_Accuracy_pct": 56.7,
+      "Train_RMSE": 53.61,
+      "CV_5Fold_RMSE": 52.44
     },
     "params": {
-      "model_type": "RidgeRegression",
-      "alpha": 500000.0,
+      "model_type": "DeltaRidgeRegression",
+      "alpha": 500.0,
       "solver": "auto",
-      "train_samples": 465,
+      "train_samples": 440,
       "test_samples": 30,
       "features_count": 9
     }
   },
   {
-    "run_id": "eb8991b8749d448298fd2a802abcd46d",
+    "run_id": "d2f7b726877646cd87a6c2ca8f52fc5a",
     "run_name": "Run_2_RandomForest_Deep_Trees",
-    "model_type": "RandomForestRegressor",
+    "model_type": "DeltaRandomForestRegressor",
+    "dvc_hash": "843ba914fd623a74280ecdd5513d4a27",
+    "data_version": "v3.0-bi-real-475d",
     "metrics": {
-      "MAE": 20.14,
-      "RMSE": 23.5,
-      "MAPE_pct": 0.11,
-      "R2_Score": 0.9875,
-      "Directional_Accuracy_pct": 69.0,
-      "Train_RMSE": 14.21,
-      "CV_5Fold_RMSE": 70.79
+      "MAE": 33.71,
+      "RMSE": 41.45,
+      "MAPE_pct": 0.185,
+      "R2_Score": 0.8618,
+      "Directional_Accuracy_pct": 56.7,
+      "Train_RMSE": 51.0,
+      "CV_5Fold_RMSE": 53.58
     },
     "params": {
-      "model_type": "RandomForestRegressor",
+      "model_type": "DeltaRandomForestRegressor",
       "n_estimators": 100,
-      "max_depth": 6,
-      "min_samples_split": 2,
-      "train_samples": 465,
-      "test_samples": 30,
-      "features_count": 9
-    }
-  },
-  {
-    "run_id": "29db169e21a244769867a21f1c8d3a32",
-    "run_name": "Run_3_RandomForest_Tuned_Regularized",
-    "model_type": "RandomForestRegressor",
-    "metrics": {
-      "MAE": 23.17,
-      "RMSE": 27.42,
-      "MAPE_pct": 0.127,
-      "R2_Score": 0.9829,
-      "Directional_Accuracy_pct": 58.6,
-      "Train_RMSE": 19.72,
-      "CV_5Fold_RMSE": 71.06
-    },
-    "params": {
-      "model_type": "RandomForestRegressor",
-      "n_estimators": 150,
-      "max_depth": 5,
-      "min_samples_split": 4,
-      "train_samples": 465,
-      "test_samples": 30,
-      "features_count": 9
-    }
-  },
-  {
-    "run_id": "b83ed05fa3c44818bcba410579db198b",
-    "run_name": "Run_4_GradientBoosting_Champion",
-    "model_type": "GradientBoostingRegressor",
-    "metrics": {
-      "MAE": 17.82,
-      "RMSE": 21.3,
-      "MAPE_pct": 0.097,
-      "R2_Score": 0.9897,
-      "Directional_Accuracy_pct": 69.0,
-      "Train_RMSE": 14.53,
-      "CV_5Fold_RMSE": 70.77
-    },
-    "params": {
-      "model_type": "GradientBoostingRegressor",
-      "n_estimators": 100,
-      "learning_rate": 0.05,
       "max_depth": 3,
-      "subsample": 0.8,
-      "train_samples": 465,
+      "min_samples_leaf": 15,
+      "train_samples": 440,
       "test_samples": 30,
       "features_count": 9
+    }
+  },
+  {
+    "run_id": "813809c9bc6a483bb96e1a7d14c488d2",
+    "run_name": "Run_3_RandomForest_Tuned_Regularized",
+    "model_type": "DeltaRandomForestRegressor",
+    "dvc_hash": "843ba914fd623a74280ecdd5513d4a27",
+    "data_version": "v3.0-bi-real-475d",
+    "metrics": {
+      "MAE": 34.13,
+      "RMSE": 41.84,
+      "MAPE_pct": 0.188,
+      "R2_Score": 0.8591,
+      "Directional_Accuracy_pct": 56.7,
+      "Train_RMSE": 52.23,
+      "CV_5Fold_RMSE": 53.14
     },
-    "registered_model": {
-      "name": "USD_IDR_Exchange_Rate_Regressor",
-      "version": 1,
-      "model_uri": "runs:/b83ed05fa3c44818bcba410579db198b/model"
+    "params": {
+      "model_type": "DeltaRandomForestRegressor",
+      "n_estimators": 150,
+      "max_depth": 2,
+      "min_samples_leaf": 20,
+      "train_samples": 440,
+      "test_samples": 30,
+      "features_count": 9
+    }
+  },
+  {
+    "run_id": "8adefa270efc471bb3ce4a58b32871da",
+    "run_name": "Run_4_GradientBoosting_Champion",
+    "model_type": "DeltaGradientBoostingRegressor",
+    "dvc_hash": "843ba914fd623a74280ecdd5513d4a27",
+    "data_version": "v3.0-bi-real-475d",
+    "metrics": {
+      "MAE": 33.33,
+      "RMSE": 41.06,
+      "MAPE_pct": 0.183,
+      "R2_Score": 0.8644,
+      "Directional_Accuracy_pct": 63.3,
+      "Train_RMSE": 52.96,
+      "CV_5Fold_RMSE": 52.75
+    },
+    "params": {
+      "model_type": "DeltaGradientBoostingRegressor",
+      "n_estimators": 20,
+      "learning_rate": 0.03,
+      "max_depth": 2,
+      "subsample": 0.8,
+      "min_samples_leaf": 15,
+      "loss": "huber",
+      "train_samples": 440,
+      "test_samples": 30,
+      "features_count": 9
     }
   }
 ]

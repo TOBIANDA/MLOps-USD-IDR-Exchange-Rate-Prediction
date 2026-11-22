@@ -1,5 +1,5 @@
 outs:
-- md5: a05285c9f8b3421595311897eecf5861
-  size: 24349
+- md5: 843ba914fd623a74280ecdd5513d4a27
+  size: 23116
   hash: md5
   path: usd_idr_raw.csv

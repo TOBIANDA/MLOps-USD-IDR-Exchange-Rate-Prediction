@@ -1,50 +1,50 @@
 {
-  "dataset_total_rows": 500,
-  "date_start": "2024-11-13",
-  "date_end": "2026-10-13",
+  "dataset_total_rows": 475,
+  "date_start": "2024-11-22",
+  "date_end": "2026-11-20",
   "missing_values_total": 0,
   "descriptive_stats": {
-    "jual_min": 17649.81,
-    "jual_max": 19173.39,
-    "jual_mean": 18413.06,
-    "jual_std": 388.76,
-    "beli_mean": 18229.85,
-    "tengah_mean": 18321.45,
-    "spread_mean": 183.21,
-    "daily_diff_std_idr": 25.98,
-    "daily_return_std_pct": 0.141,
-    "daily_return_skew": 0.0078,
-    "daily_return_kurtosis": -0.4965
+    "jual_min": 15927.24,
+    "jual_max": 18360.35,
+    "jual_mean": 17016.42,
+    "jual_std": 675.73,
+    "beli_mean": 16847.1,
+    "tengah_mean": 16931.76,
+    "spread_mean": 169.32,
+    "daily_diff_std_idr": 53.38,
+    "daily_return_std_pct": 0.3137,
+    "daily_return_skew": 0.006,
+    "daily_return_kurtosis": 2.3924
   },
   "level_autocorrelation": {
-    "lag_1": 0.99777,
-    "lag_2": 0.99236,
-    "lag_3": 0.98448,
-    "lag_5": 0.96186,
-    "lag_7": 0.93046,
-    "lag_10": 0.86808,
-    "lag_14": 0.75948
+    "lag_1": 0.99687,
+    "lag_2": 0.99342,
+    "lag_3": 0.99053,
+    "lag_5": 0.98433,
+    "lag_7": 0.97899,
+    "lag_10": 0.97097,
+    "lag_14": 0.96007
   },
   "diff_autocorrelation": {
-    "lag_1": 0.7108,
-    "lag_2": 0.5487,
-    "lag_3": 0.5126,
-    "lag_5": 0.5068,
-    "lag_7": 0.4591,
-    "lag_10": 0.4358,
-    "lag_14": 0.3213
+    "lag_1": 0.0453,
+    "lag_2": -0.0938,
+    "lag_3": 0.0295,
+    "lag_5": -0.0409,
+    "lag_7": -0.0123,
+    "lag_10": -0.0825,
+    "lag_14": 0.0428
   },
   "test_window_benchmarks_30d": {
     "test_days": 30,
     "Naive_Random_Walk": {
-      "RMSE": 27.1802,
-      "MAE": 22.446,
-      "MAPE_pct": 0.1228
+      "RMSE": 43.2365,
+      "MAE": 34.942,
+      "MAPE_pct": 0.1921
     },
     "Moving_Average_7D": {
-      "RMSE": 129.0685,
-      "MAE": 120.3463,
-      "MAPE_pct": 0.6581
+      "RMSE": 83.7382,
+      "MAE": 71.3134,
+      "MAPE_pct": 0.3914
     }
   },
   "dashboard_artifact": "docs\\eda_comprehensive_dashboard.png"

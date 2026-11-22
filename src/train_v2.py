@@ -1,13 +1,14 @@
 """
-Model Retraining, TimeSeriesSplit Cross-Validation Tuning, & Model Registry Lifecycle Management for LK-07.
-Performs 5-Fold Expanding Window TimeSeriesSplit Cross-Validation on X_train (465 business days),
-trains Version 2 (Hyperparameter-Tuned Gradient Boosting Regressor),
+Model Retraining, TimeSeriesSplit Cross-Validation Tuning, & Model Registry Lifecycle Management.
+Performs 5-Fold Expanding Window TimeSeriesSplit Cross-Validation strictly on X_train,
+trains Version 2 (Stationary Delta Gradient Boosting Regressor),
 evaluates on the 30-day out-of-sample test set, and registers it as Version 2 in MLflow Model Registry.
 """
 
 import json
 import logging
 import os
+import sys
 from pathlib import Path
 from typing import Any, Dict
 
@@ -18,10 +19,16 @@ from mlflow.models.signature import infer_signature
 from mlflow.tracking import MlflowClient
 import numpy as np
 import pandas as pd
+from sklearn.base import clone
 from sklearn.ensemble import GradientBoostingRegressor
 from sklearn.metrics import mean_absolute_error, mean_squared_error, r2_score
 from sklearn.model_selection import TimeSeriesSplit
 
+PROJECT_ROOT = Path(__file__).resolve().parent.parent
+if str(PROJECT_ROOT) not in sys.path:
+    sys.path.insert(0, str(PROJECT_ROOT))
+
+from src.models.delta_wrapper import DeltaForecastRegressor
 from src.train import build_features, get_dvc_hash, load_dataset
 
 logging.basicConfig(
@@ -32,7 +39,6 @@ logging.basicConfig(
 logger = logging.getLogger("train_v2_registry")
 os.environ["MLFLOW_DISABLE_AGENT_HINT"] = "1"
 
-PROJECT_ROOT = Path(__file__).resolve().parent.parent
 DEFAULT_RAW_DATA = PROJECT_ROOT / "data" / "raw" / "usd_idr_raw.csv"
 DEFAULT_DVC_FILE = PROJECT_ROOT / "data" / "raw" / "usd_idr_raw.csv.dvc"
 MODEL_DIR = PROJECT_ROOT / "models"
@@ -51,12 +57,13 @@ def train_and_register_v2(
     mlflow.set_experiment(experiment_name)
     client = MlflowClient(tracking_uri=tracking_uri)
 
-    # 2. Load 500-Day Dataset & Build Zero-Leakage Features
+    # 2. Load Genuine BI Dataset & Build Zero-Leakage Features
     raw_df = load_dataset(data_path)
     dvc_hash = get_dvc_hash()
+    data_version_tag = f"v3.0-bi-real-{len(raw_df)}d"
     valid_df, feature_cols = build_features(raw_df)
 
-    # Chronological Split: 465 Train Days, 30 Out-of-Sample Test Days
+    # Chronological Split
     train_df = valid_df.iloc[:-test_size].copy()
     test_df = valid_df.iloc[-test_size:].copy()
 
@@ -66,21 +73,22 @@ def train_and_register_v2(
     y_test = test_df["target_jual"].values
     y_base = test_df["jual"].values
 
-    # 3. 5-Fold Expanding Window TimeSeriesSplit Cross-Validation strictly on X_train (465 rows)
+    # 3. 5-Fold Expanding Window TimeSeriesSplit Cross-Validation strictly on X_train
     tscv = TimeSeriesSplit(n_splits=5)
     param_grid = [
-        {"n_estimators": 100, "learning_rate": 0.05, "max_depth": 3, "subsample": 0.8},
-        {"n_estimators": 140, "learning_rate": 0.05, "max_depth": 3, "subsample": 0.85},
-        {"n_estimators": 180, "learning_rate": 0.06, "max_depth": 3, "subsample": 0.9},
-        {"n_estimators": 120, "learning_rate": 0.04, "max_depth": 4, "subsample": 0.8},
+        {"n_estimators": 20, "learning_rate": 0.03, "max_depth": 2, "subsample": 0.8, "min_samples_leaf": 15, "loss": "huber"},
+        {"n_estimators": 30, "learning_rate": 0.05, "max_depth": 2, "subsample": 0.8, "min_samples_leaf": 15, "loss": "huber"},
+        {"n_estimators": 40, "learning_rate": 0.03, "max_depth": 2, "subsample": 0.8, "min_samples_leaf": 15, "loss": "huber"},
+        {"n_estimators": 50, "learning_rate": 0.04, "max_depth": 2, "subsample": 0.8, "min_samples_leaf": 20, "loss": "huber"},
     ]
 
     best_cv_rmse = float("inf")
-    best_cfg = param_grid[2]
+    best_cfg = param_grid[0]
     for cfg in param_grid:
         fold_rmses = []
+        base_model = DeltaForecastRegressor(GradientBoostingRegressor(**cfg, random_state=42))
         for tr_idx, val_idx in tscv.split(X_train):
-            m = GradientBoostingRegressor(**cfg, random_state=42)
+            m = clone(base_model)
             m.fit(X_train.iloc[tr_idx], y_train[tr_idx])
             p_val = m.predict(X_train.iloc[val_idx])
             fold_rmses.append(float(np.sqrt(mean_squared_error(y_train[val_idx], p_val))))
@@ -91,12 +99,14 @@ def train_and_register_v2(
             best_cfg = cfg
 
     v2_params = {
-        "model_type": "GradientBoostingRegressor",
+        "model_type": "DeltaGradientBoostingRegressor",
         "version": "v2.0-cv-tuned",
         "n_estimators": best_cfg["n_estimators"],
         "learning_rate": best_cfg["learning_rate"],
         "max_depth": best_cfg["max_depth"],
         "subsample": best_cfg["subsample"],
+        "min_samples_leaf": best_cfg["min_samples_leaf"],
+        "loss": best_cfg["loss"],
         "cv_folds": 5,
         "train_samples": len(X_train),
         "test_samples": len(X_test),
@@ -109,12 +119,16 @@ def train_and_register_v2(
         run_id = run.info.run_id
         logger.info("Starting Run: %s (ID: %s)", run_name, run_id)
 
-        model_v2 = GradientBoostingRegressor(
-            n_estimators=v2_params["n_estimators"],
-            learning_rate=v2_params["learning_rate"],
-            max_depth=v2_params["max_depth"],
-            subsample=v2_params["subsample"],
-            random_state=42,
+        model_v2 = DeltaForecastRegressor(
+            GradientBoostingRegressor(
+                n_estimators=v2_params["n_estimators"],
+                learning_rate=v2_params["learning_rate"],
+                max_depth=v2_params["max_depth"],
+                subsample=v2_params["subsample"],
+                min_samples_leaf=v2_params["min_samples_leaf"],
+                loss=v2_params["loss"],
+                random_state=42,
+            )
         )
         model_v2.fit(X_train, y_train)
 
@@ -123,7 +137,7 @@ def train_and_register_v2(
 
         mae = float(mean_absolute_error(y_test, y_pred))
         rmse = float(np.sqrt(mean_squared_error(y_test, y_pred)))
-        mape = float(np.mean(np.abs((y_test - y_pred) / y_true)) * 100.0) if "y_true" in locals() else float(np.mean(np.abs((y_test - y_pred) / y_test)) * 100.0)
+        mape = float(np.mean(np.abs((y_test - y_pred) / y_test)) * 100.0)
         r2 = float(r2_score(y_test, y_pred))
 
         actual_dir = np.sign(y_test - y_base)
@@ -145,7 +159,7 @@ def train_and_register_v2(
 
         mlflow.set_tag("data.source", str(data_path.name))
         mlflow.set_tag("data.dvc_hash", dvc_hash)
-        mlflow.set_tag("data.version", "v2.0-dataset-500d")
+        mlflow.set_tag("data.version", data_version_tag)
         mlflow.set_tag("task", "USD_IDR_Exchange_Rate_Regression")
         mlflow.set_tag("author", "Tobias Andra Valentino")
         mlflow.set_tag("model_iteration", "v2_production_candidate")

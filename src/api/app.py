@@ -59,6 +59,7 @@ _MODEL_CACHE: Dict[str, Any] = {
     "version": None,
     "stage": None,
     "run_id": None,
+    "rmse": None,
     "load_time_ms": None,
 }
 
@@ -136,6 +137,7 @@ def get_serving_model(force_reload: bool = False) -> Tuple[Any, Dict[str, Any]]:
             loaded_version = None
             loaded_stage = model_stage
             loaded_run_id = None
+            loaded_rmse = None
 
             t0 = time.perf_counter()
             try:
@@ -154,6 +156,14 @@ def get_serving_model(force_reload: bool = False) -> Tuple[Any, Dict[str, Any]]:
                     loaded_version = str(latest_mvs[0].version)
                     loaded_stage = latest_mvs[0].current_stage
                     loaded_run_id = latest_mvs[0].run_id
+
+            if loaded_run_id:
+                try:
+                    run_obj = client.get_run(loaded_run_id)
+                    if "RMSE" in run_obj.data.metrics:
+                        loaded_rmse = float(run_obj.data.metrics["RMSE"])
+                except Exception:
+                    pass
             load_ms = round((time.perf_counter() - t0) * 1000.0, 2)
 
             _MODEL_CACHE.update({
@@ -162,6 +172,7 @@ def get_serving_model(force_reload: bool = False) -> Tuple[Any, Dict[str, Any]]:
                 "version": f"v{loaded_version}" if loaded_version else "v2.0.0-registry",
                 "stage": loaded_stage,
                 "run_id": loaded_run_id,
+                "rmse": loaded_rmse,
                 "load_time_ms": load_ms,
             })
             logger.info(
@@ -180,17 +191,35 @@ def get_serving_model(force_reload: bool = False) -> Tuple[Any, Dict[str, Any]]:
         t0 = time.perf_counter()
         local_model = joblib.load(MODEL_PATH)
         load_ms = round((time.perf_counter() - t0) * 1000.0, 2)
+        local_rmse = _read_local_model_rmse()
         _MODEL_CACHE.update({
             "model": local_model,
             "source": "local_fallback" if tracking_uri else "local_artifact",
             "version": "v1.0.0-champion",
             "stage": "Local",
             "run_id": None,
+            "rmse": local_rmse,
             "load_time_ms": load_ms,
         })
         return local_model, {k: v for k, v in _MODEL_CACHE.items() if k != "model"}
 
     raise HTTPException(status_code=503, detail="Champion model not yet trained or loaded.")
+
+
+def _read_local_model_rmse() -> float:
+    """Resolve out-of-sample RMSE from local model metadata JSON files."""
+    for candidate in (MODEL_DIR / "best_model_metadata.json", META_PATH):
+        if candidate.exists():
+            try:
+                with open(candidate, "r", encoding="utf-8") as f:
+                    payload = json.load(f)
+                if "metrics" in payload and "RMSE" in payload["metrics"]:
+                    return float(payload["metrics"]["RMSE"])
+                if "candidate_model" in payload and "RMSE" in payload["candidate_model"].get("metrics", {}):
+                    return float(payload["candidate_model"]["metrics"]["RMSE"])
+            except Exception:
+                pass
+    return 40.22
 
 
 @app.get("/")
@@ -334,9 +363,10 @@ def predict_h1() -> Dict[str, Any]:
     pred_beli = round(pred_jual - recent_spread, 2)
     pred_jual = round(pred_jual, 2)
 
-    # Use v2 champion RMSE (19.46 IDR) when served from registry or v2 model, else legacy estimate
-    is_registry_v2 = meta.get("source") == "mlflow_registry"
-    half_width = round(1.96 * 19.46, 2) if is_registry_v2 else round(1.96 * (63.37 * 0.8), 2)
+    active_rmse = meta.get("rmse")
+    if active_rmse is None or active_rmse <= 0:
+        active_rmse = _read_local_model_rmse()
+    half_width = round(1.96 * float(active_rmse), 2)
 
     return {
         "base_date": str(latest_row["tgl"].iloc[0].date()),
